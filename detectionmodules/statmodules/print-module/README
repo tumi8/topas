@@ -1,0 +1,84 @@
+                           A very light and simple
+                           traffic printing module
+                           =======================
+
+
+
+To use this module, you have to:
+
+1) enable it in the IPFIX collector's XML configuration file, through
+   <module>
+        <filename>path/to/print-module</filename>
+	<arg>path/to/print-module-xml-configuration-file</arg>
+   </module>
+
+2) provide some configuration information in the module's XML
+   configuration file; this information is detailled in section I of
+   this README file
+
+
+
+Table of contents
+=================
+
+I   - Configuration
+II  - How does it work?
+III - Known bugs
+
+
+
+I - Configuration
+=================
+
+Only one thing has to be provided in the XML configuration file,
+in section <preferences>: the path to the module output file,
+in the field <output_file>. If not given, or if troubles opening
+it occur (e.g. access-rights problems), the module will issue a
+warning message and exit.
+
+
+
+II - How does it work?
+======================
+
+This module is based on the third example module by Lothar Braun
+(ipfix-collector/detectionmodules/examplemodules/third).
+
+It works "in real time" by setting its alarm time to 0: as soon as
+a new record is received from the collector, the data storage class
+will store its IPFIX fields and be read by the main detection
+class; the information in the storage class will then be written
+to the output file:
+
+- flow start
+- flow end
+- source IP
+- destination IP
+- protocol
+- source port
+- destination port
+- number of packets in flow
+- number of bytes in flow
+
+The output is a table with header:
+
+FlwStrt|FlwEnd|Source IP      |Dest IP        |Prot|SrcPort|DestPort|Pckts|Bytes
+-------|------|---------------|---------------|----|-------|--------|-----|-----
+
+
+
+III - Known bugs
+================
+
+When protocol is ICMP (protocol ID = 1), source and destination ports are 0.
+It's not really a bug, just the initial values for all fields. As port
+numbers are quite irrelevant for ICMP, it's also not a problem.
+
+
+
+--
+
+Requests, comments, bug reports, chocolate, etc
+--> romain(.)michalec(at)ensta(.)org
+
+2007/07/18

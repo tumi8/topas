@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<xmlBlasters>
+	        <xmlBlaster>
+		  <prop>plugin/socket/hostname 127.0.0.1</prop>
+		  <prop>plugin/socket/port 7607</prop>
+		  <prop>queue/connection/type RAM</prop>
+		  <prop>xmlBlaster/logging/configFileName log4cplus.properties</prop>
+		  <prop>log4cplus.rootLogger WARN, STDOUT</prop>
+		</xmlBlaster>
+	</xmlBlasters>
+	<preferences>
+	        <output_file>wkp.output</output_file>
+		<alarm_time>30</alarm_time>
+		<warning_verbosity>1</warning_verbosity>
+	        <output_verbosity>4</output_verbosity>
+		<monitored_value>packets</monitored_value>
+		<protocols>TCP</protocols>
+	        <netmask>24</netmask>
+		<ports>80 8080 443</ports>
+		<!--<ip_addresses_to_monitor>some_file</ip_addresses_to_monitor>-->
+		<iplist_maxsize>100</iplist_maxsize>
+	</preferences>
+	<test-params>
+		<wilcoxon_test>true</wilcoxon_test>
+		<kolmogorov_test>true</kolmogorov_test>
+		<pearson_chi-square_test>true</pearson_chi-square_test>
+		<sample_old_size>80</sample_old_size>
+		<sample_new_size>20</sample_new_size>
+		<two_sided>true</two_sided>
+		<stat_test_frequency>2</stat_test_frequency>
+		<significance_level>0.05</significance_level>
+		<report_only_first_attack>true</report_only_first_attack>
+	</test-params>
+</configuration>

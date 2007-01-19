@@ -1,0 +1,57 @@
+Author: Nico Weber <weber@informatik.uni-tuebingen.de>
+
+Snortmodule crafts PcapPackets out of sampled ipfix-data and feeds it to an application of your choice.
+
+Requirements:
+	Your application should be able to read PcapPackets from a named pipe.
+	
+Currently supported IDs:
+
+
+	subscribeTypeId(IPFIX_TYPEID_destinationIPv4Address);
+	subscribeTypeId(IPFIX_TYPEID_sourceIPv4Address);
+	subscribeTypeId(IPFIX_TYPEID_sourceTransportPort);
+	subscribeTypeId(IPFIX_TYPEID_destinationTransportPort);
+	subscribeTypeId(IPFIX_TYPEID_tcpControlBits);
+	subscribeTypeId(IPFIX_TYPEID_classOfServiceIPv4);
+	subscribeTypeId(IPFIX_TYPEID_protocolIdentifier);
+	subscribeTypeId(IPFIX_TYPEID_identificationV4);
+	subscribeTypeId(IPFIX_TYPEID_udpSourcePort);
+	subscribeTypeId(IPFIX_TYPEID_udpDestinationPort);
+	subscribeTypeId(IPFIX_TYPEID_tcpSourcePort);
+	subscribeTypeId(IPFIX_TYPEID_tcpDestinationPort);
+	subscribeTypeId(IPFIX_TYPEID_tcpSequenceNumber);
+	subscribeTypeId(IPFIX_TYPEID_tcpAcknowledgementNumber);
+	subscribeTypeId(IPFIX_TYPEID_tcpWindowSize);
+	subscribeTypeId(187);// | tcpUrgentPointer
+	subscribeTypeId(IPFIX_TYPEID_totalLengthIPv4);
+	subscribeTypeId(IPFIX_TYPEID_ipTimeToLive);
+
+        subscribeTypeId(313);//PSAMP_TYPEID_ipHeaderPacketSection 
+	subscribeTypeId(314);//PSAMP_TYPEID_ipPayloadPacketSection  
+		
+
+TODO:
+	Logic
+	Errorhandling
+	Clean up code
+	
+BUGS:
+	Buggy Errorhandling
+	sometimes unclean exit (files and process)
+
+DOCS:	
+	Just run doxgen in the local directory and browse the documentation
+	with the browser of your choice
+	
+NOTES:
+	Packet is only crafted out of 
+	ipHeaderPacketSection OR
+	ipHeader(crafted) AND ipPayloadPacketSection OR
+	completely crafted of IDs(transport+ip)
+
+	It is NOT possible to craft something like that:
+	ipHeaderPacketSection(12byte)+sourceIPv4Address+destinationIPv4Address+ IDs or payload
+	
+
+	feel free to email me with further questions.

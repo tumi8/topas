@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<collector>
+		<workingDir>../working_dir/</workingDir>
+		<modules>
+			<module>
+			        <filename>../detectionmodules/examplemodules/third/examplemodule</filename>
+				<arg>test.xml</arg>
+			</module>
+		</modules>
+		<transport_proto>UDP</transport_proto>
+		<listenPort>1500</listenPort>
+		<detectmod_killtime>0</detectmod_killtime>
+		<restartOnCrash>yes</restartOnCrash>
+		<!--
+		<exchangeProtocol type="files">
+			<packetDir>packet_dir/</packetDir>
+		</exchangeProtocol>
+		-->
+		<exchangeProtocol type="shm">
+			<shmSize uint="B">500000</shmSize>
+		</exchangeProtocol>
+		<player>
+			<action>off</action>
+			<trafficDir>store/</trafficDir>
+		</player>
+	</collector>
+</configuration>

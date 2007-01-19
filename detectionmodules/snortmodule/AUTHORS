@@ -1,0 +1,17 @@
+main author: Nico Weber <weber@informatik.uni-tuebingen.de>
+
+pcappacket.h/cpp:
+	structs for the ethernet/ip/tcp/udp packet information
+	as well as some checksum calculation algorithms
+	were taken from text2pcap.c out of the wireshark-project
+	(former ethereal) and "c++ified"
+	
+	Credits for text2pcap.c:
+
+	(c) Copyright 2001 Ashok Narayanan <ashokn@cisco.com>
+	
+	Ethereal - Network traffic analyzer
+	By Gerald Combs <gerald@ethereal.com>
+	Copyright 1998 Gerald Combs
+	       
+	see http://www.wireshark.org/ for details

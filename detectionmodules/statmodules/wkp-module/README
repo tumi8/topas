@@ -1,0 +1,444 @@
+                   Wilcoxon-Mann-Whitney, Kolmogorov-Smirnov
+                              & Pearson chi-square
+                                detection module
+                   =========================================
+
+
+
+To use this module, you have to:
+
+1) enable it in the IPFIX collector's XML configuration file, through
+   <module>
+     <filename>path/to/wkp-module</filename>
+     <arg>path/to/wkp-module-xml-configuration-file</arg>
+   </module>
+
+2) provide some configuration information in the module's XML
+   configuration file; this information is detailled in section I of
+   this README file
+
+
+
+Table of contents
+=================
+
+I   - Configuration
+II  - How does it work?
+III - Known bugs and limitations
+
+
+
+I - Configuration
+=================
+
+The module's XML configuration file must provide the following two sections:
+- <preferences>: user's preferences about the module
+- <test-params>: statistical tests parameters
+
+<preferences>
+-------------
+
+<output_file>:
+
+path to the module output file. If not given, or if troubles opening
+it occur (e.g. problems with rights), the module will issue a warning
+message and exit.
+
+<alarm_time>:
+
+time (in sec.) between two "test-runs". A "test-run" is defined as the
+time when the module gathers information from the data-store, updates
+its own samples information, and -- possibly, but not systematically
+(see <stat_test_frequency>) -- runs Wilcoxon and/or Kolmogorov and/or
+Pearson chi-square statistical tests. If no alam time is given, a
+warning message is issued and the module exits.
+
+<warning_verbosity>:
+
+O: warnings are sent to stderr
+1: warnings are sent to stderr and output file
+If not given, a warning message is issued and default 0 is used; if
+something else as 0 or 1 is given, a warning message is issued and the
+module exits.
+
+<output_verbosity>:
+
+O: no output generated
+1: only p-values and attacks are recorded
+2: same as 1, plus some cosmetics
+3: same as 2, plus learning phases, updates and empty records events
+4: same as 3, plus sample printing
+5: same as 4, plus all details from statistical tests
+If not given, a warning message is issued and default 3 is used; if
+something less than 0 or greater than 5 is given, a warning message is
+issued and the module exits.
+
+<monitored_value>:
+
+The user should choose which value (s)he prefers to monitor: packets,
+octets, octets/packet, packets_out-packets_in, octets_out-octets_in,
+packets(t)-packets(t-1) and octets(t)-octets(t-1) are supported. The
+input is not case-sensitive, and "bytes" and "octets" are synonymous.
+If nothing or something else is given, the module exits after a
+warning message. Please note that the module does in fact NOT handle
+octets/packet, but rather 1000*octets/packet, the result being an
+integer: this trick enables to "simulate" a float division and
+increase precision, without re-writing loads of existing code.
+
+<noise_threshold_packets>, <noise_threshold_bytes>:
+
+Do not consider the sample values below a certain threshold.
+This options are motivated by the fact that sometimes, some IP addresses
+have insignificant or irregular network traffic activity, sending only
+a dozen or so packets from time to time, like "residual" traffic, "noise",
+that should be cut off to avoid monitoring irregular and insignificant
+network traffic. This helps reducing the number of "false positive" alarms.
+Noise reduction is active only if monitored_value is packets or bytes; these
+parameters will be ignored if monitored_value is something else.
+If no noise reduction prefererences are provided and if monitored_value is
+packets or bytes, a warning message is issued and default values 0 are used
+(no noise reduction).
+
+<protocols>:
+
+protocols to monitor; packets of other protocols will be ignored.
+Possible choices are ICMP, TCP, UDP, RAW, or their identifiers 1, 6,
+17, 255; they must be written as a space-separated list. Input is not
+case-sensitive. If some other protocol is provided, the module will
+exit with an usage message. Default is monitoring all of them (after
+some warning message).
+
+<netmask>:
+
+subnet mask to apply to every IP address. When the file containing IP
+addresses to monitor is read (see <ip_addresses_to_monitor>), its
+addresses are immediately masked, and when an IP address is reported
+to the collector by the monitor, it is at once masked, and then
+compared with the masked addresses gotten from the file. This mask can
+be provided as a dotted address (255.255.255.0), as an hexadecimal
+number (0xFFFFFF00, don't forget the 0x) or as an integer shortcut
+(24). If something else is provided, the module exits after issuing an
+error message; if nothing is given, default value 32 is assumed.
+
+<ports>:
+
+ports to monitor; packets to or from other ports will be ignored. They
+must be written as a space-separated list. If not given, default
+behavior is to pay no attention to ports and monitor everything (a
+warning message will be issued).
+
+<ip_addresses_to_monitor>:
+
+path to a file containing IP addresses (one per line). It acts as a
+filter: only the given IPs will be monitored by the module, in both
+"in" and "out" directions; the others will be ignored. It can contain
+hosts and/or networks addresses; keep in mind that they will all be
+masked by the same subnet mask (see <netmask>). If a problem occurs
+opening this file, the module will exit after a warning message. If no
+file is given, a warning message will be issued stating that it is
+assumed the user wants the module to monitor every IP address found on
+the monitored device (see <iplist_maxsize>). Please note that the IP
+addresses reported to the collector by the monitor will also be
+masked.
+
+<iplist_maxsize>:
+
+In case the user wants every IP address to be monitored, a limit to
+the number of these IP addresses must be provided to prevent memory
+exhaustion through too many monitored IP addresses. If not given, then
+default 421 will be used after a warning message. If the user gives
+both <ip_addresses_to_monitor> and <iplist_maxsize>, only the former
+will be taken into account.
+
+<stat_test_frequency>:
+
+This parameter tells the module to perform a statistical test every X
+"test-runs" (see <alarm_time>), i.e. every
+<stat_test_frequency>*<alarm_time> seconds. If not provided, a warning
+message will be issued, and default X=1 will be used.
+
+<report_only_first_attack>:
+
+If set to true, the module will only display the first "ATTACK!" message
+in a series of several results hinting at an attack. This helps keep the
+log file more readable. Moreover, as an attack usually covers many
+Stat::test()-runs, only the first alarm message is relevant.
+This parameter is a case-insensitive boolean that will be set to true
+if no value is provided (after an information message).
+
+<pause_update_when_attack>:
+
+If set to true, it "pauses" the update function when an attack occurs,
+i.e. it updates only the "new" sample, so that the anomaly is not
+assumed to be normal traffic when the corresponding sample values are sent
+into the "old" sample. This avoids detecting another anomaly when the
+current anomaly ceases and traffic returns to normal values.
+This parameter is a case-insensitive boolean that will be set to true
+if no value is provided (after an information message).
+
+<test-params>
+-------------
+
+<wilcoxon_test>, <kolmogorov_test>, <pearson_chi-square_test>:
+
+These parameters tell the module which statistical tests to
+perform. They are case-insensitive booleans that will all be assumed
+to true (after some warning messages) if not given.
+
+<sample_old_size>, <sample_new_size>:
+
+These parameters are the length of the two sample vectors used by the
+statistical tests. The former is the "profile", the "past" of the
+monitored network, to which the later, the "present" of the network,
+is compared. If not provided, default values 111 (for the "old"
+sample) and 11 (for the "new" sample) are used.
+
+<two_sided>:
+
+This case-insensitive boolean tells if Wilcoxon-Mann-Whitney statistical
+test should be performed assuming the alternative hypothesis is
+one-sided or two-sided. Default is false, and will be assumed
+after some warning message, if the user doesn't provide it.
+This parameter is active only if Wilcoxon-Mann-Whitney test is enabled;
+Kolmogorov-Smirnov and Pearson chi-square tests are one-sided only
+(see the comments in their source files, and the STATS file if you need
+to revive some memories about one-sided and two-sided tests).
+
+<significance_level>:
+
+If this parameter is provided, the module will display an "ATTACK!"
+message everytime the statistical tests yield a p-value hinting at the
+possibility of an attack, to significance level <significance_level>.
+Usually, we use 0.05. If a value smaller than 0 or greater than 1 is
+given, the module will display a warning message and exit. If no value
+is given, the module will not display any warning message, nor any
+"ATTACK!" message.
+
+
+
+II - How does it work?
+======================
+
+Wilcoxon-Mann-Whitney, Kolmogorov-Smirnov and Pearson chi-square tests
+are somewhat similar: they are both performed on two sample vectors,
+one representing the "old" network activity profile, and the other the
+"recent" network activity profile. They test the null hypothesis H0
+that both samples are drawn from the same distribution against the
+alternative H1 that they are not. H0 means that network traffic has
+not changed between "old" and "recent", which is the case under normal
+operation, whereas H1 hints at an anomaly, perhaps an attack.
+
+Writing three different modules would mean writing the same code,
+except when it comes to the mathematical tests. Everything else (the
+data storage class, the sample learning-and-update function, the main
+parts of the detection base) is the same. Thus we write only one
+detection module, able to perform all three tests.
+
+Here is a short description of every source file:
+
+stat-store.h/cpp:
+-----------------
+
+Defines and implements the data storage class, StatStore. Information
+received from the monitor is stored into this storage class into a
+C++ "map" container whose key field is an IP address and value field
+is a structure containing the numbers of packets and bytes in both
+"IN" and "OUT" directions (a map is a kind of table whose keys are
+always sorted):
+
++-----+     +--------------+--------------+------------+------------+
+| IP1 |-----| #packets <-- | #packets --> | #bytes <-- | #bytes --> |
++-----+     +--------------+--------------+------------+------------+
+| IP2 |-----| #packets <-- | #packets --> | #bytes <-- | #bytes --> |
++-----+     +--------------+--------------+------------+------------+
+  ...             ...            ...           ...          ...
+
+This map container is destroyed with the StatStore object when a
+"test-run" occurs ("alarm time" reached: a "test-run" is the time when
+the module gathers information from the data-store, updates its own
+samples information, and possibly, but not systematically, runs
+statistical tests). Before destroying the map, the module will grab
+the relevant information (see stat-main.h/cpp) to update its own
+samples information. At the beginning of the next test-run, an empty
+map will be created with a new Stat-Store object, and information will
+be gathered from the collector until the next "test-run".
+
+As StatStore object are destroyed and renewed each "alarm time"
+seconds, we had to make extensive use of static members to have
+StatStore objects share common, fixed and unchanging information of
+crucial importance to its operation, such as the IP addresses to
+monitor, the protocols to monitor, the ports to monitor, the subnet
+mask to apply to all encountered IP addresses... This information
+reflects the user's preferences defined in the XML configuration
+file. It is extracted from the XML file by the Stat::init() function
+(see stat-main.h/cpp) and passed to the Stat-Store class by the
+truchment of static and public "setters" related to these static
+members.
+
+
+stat-main.h/cpp:
+----------------
+
+Defines and implements a class, Stat, derived from DetectionBase,
+which contains the test() function, the samples, all the parameters
+defined in the XML configuration file, as well as the means to extract
+them from the configuration file and to warn the user if they are not
+consistent ("user-friendly" interface). In a word: almost everything.
+
+Defines and implements another class, DirectedIpAddress, derived from
+IpAddress, which will be used as key in the C++ "map" container
+storing "old" and "recent" sample information. Samples, as well as
+tests, are indeed relative to a particular monitored IP address, in a
+particular direction ("OUT" traffic or "IN" traffic, i.e. IP address
+seen as a Source address or as a Destination address).
+
+The core of the Stat class is this sample container. It is implemented
+as a C++ "map" container so that it will always be sorted; the key is
+a DirectedIpAddress and the value is a structure containing two "list"
+containers (to enable easy removal of elements at the beginning or the
+end, which will be useful when "updating" samples and which was not
+provided by "vector" containers):
+
++---------+     +---------------------+----------------------------+
+| IP1 --> |-----| "old" sample (past) | "new" sample (recent past) |
++---------+     +---------------------+----------------------------+
+| IP1 <-- |-----| "old" sample (past) | "new" sample (recent past) |
++---------+     +---------------------+----------------------------+
+| IP2 --> |-----| "old" sample (past) | "new" sample (recent past) |
++---------+     +---------------------+----------------------------+
+| IP2 <-- |-----| "old" sample (past) | "new" sample (recent past) |
++---------+     +---------------------+----------------------------+
+    ...                  ...                       ...
+
+The sample lists are lists of integers, representing, depending on the
+user's choice:
+
+- the number of packets;
+- the number of bytes;
+- the number of bytes per packet;
+- the number of outcoming packets minus the number of incoming packets;
+- the number of outcoming bytes minus the number of incoming bytes.
+- the number of packets at time t minus the number of packets at time t-1;
+- the number of bytes at time t minus the number of bytes at time t-1.
+
+The module does in fact not handle octets/packet, but rather
+1000*octets/packet, the result being an integer: this trick enables to
+"simulate" a float division and increase precision, without re-writing
+loads of existing code.
+
+The Stat class constructs and maintains this "table" by retrieving
+information from the StatStore class at every "test-run" (see
+stat-store.h/cpp). If the IP addresses found in the Stat-Store class
+are new to the Stat class, a new "line" is inserted into this table
+(in fact, two new lines, one in each direction); if not, sample
+information is updated:
+
+- by adding the new element to the "old" or "new" sample if one of
+  them has not reached its maximal size (again a parameter set by the
+  user); that's what we call the "learning phase":
+      +---------------------+----------+
+  t   | 15 65 15 58         |          |
+      +---------------------+----------+
+      +---------------------+----------+
+  t+1 | 15 65 15 58 64      |          |
+      +---------------------+----------+
+
+- by dropping the oldest element (first from "old" sample), shifting
+  the first element of the "new" sample to be the last of the "old"
+  sample, and adding the new element as the last element of "new", if
+  both of them have reached their maximal sizes; we call that the
+  "update phase":
+      +---------------------+----------+
+  t   | 15 65 15 58 64 9 76 | 53 12 89 |
+      +---------------------+----------+
+      +---------------------+----------+
+  t+1 | 65 15 58 64 9 76 53 | 12 89 27 |
+      +---------------------+----------+
+
+The other main parts of the Stat class are the "init" function and the
+"test" function.
+
+The job of the init function is to extract the user's preferences from
+the XML configuration file. This is not a difficult work, but a
+tedious one to program, for there is quite an important number of
+parameters to extract, and every human error has to go reported (the
+user can forget to provide parameters or provide inconsistent or
+unsupported parameters, and so on). For the sake of readability, the
+init function was divided into init_<task> functions, where <task> is
+usually the name of the parameter being processed.
+
+It should be noted that it is the init function that sets the static
+members of the StatStore class (monitored IPs, protocols, ports, etc:
+see stat-store.h/cpp) according to the user's preferences.
+
+The test function manages the sample information as explained before,
+and, from time to time (here again depending from the user's
+preferences), run statistical tests. Therefore is it written in two
+parts:
+
+- the first part retrieves information from the StatStore class (call
+  to the Stat::extract_data function) and updates sample information
+  in the learning and update phases (call to the Stat::update
+  function);
+
+- the second part tests if it is time to run statistical tests, and do
+  so if it is (call to Stat::stat_test). It is very easy to add any
+  other statistical test operating on an "old" and a "new" sample by
+  modifying only this Stat::stat_test function.
+
+The word "test-run" comes from this function, which is run every
+"alarm time" seconds. One should beware not to get confused with the
+"test" and the "stat_test" functions.
+
+main.cpp:
+---------
+
+Defines a Stat object and starts the related module.
+
+wmw-test.h/cpp:
+---------------
+
+Wilcoxon-Mann-Whitney statistical rank test.
+
+ks-test.h/cpp:
+--------------
+
+Kolmogorov-Smirnov statistical test.
+
+pcs-test.h/cpp:
+-----------------
+
+Pearson chi-square statistical test.
+
+shared.h/cpp:
+-------------
+
+A print operator (<<) for lists and vectors; used by all statistical
+tests.
+
+
+
+III - Known bugs and limitations
+================================
+
+Two limitations:
+
+- no mechanism of size limitation is provided for the output file (log file),
+  and its size keeps growing ever and ever (fast if output verbosity is set
+  to some high value) --> don't run the module for weeks, or find and implement
+  some size limitation mechanism;
+
+- the tests use /dev/null to send their output when output verbosity is not
+  the maximal output verbosity --> don't run the module on non-Unix machines,
+  or find and code a way to emulate a trash bin.
+
+No known bug yet, but there are probably loads of them.
+
+
+
+--
+
+For any request, comment, bug report, wedding proposal, etc,
+feel free to email romain(.)michalec(at)ensta(.)org.
+
+2006/09/28

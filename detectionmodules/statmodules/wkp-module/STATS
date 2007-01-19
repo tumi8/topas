@@ -1,0 +1,302 @@
+                   Wilcoxon-Mann-Whitney, Kolmogorov-Smirnov
+                     & Pearson chi-square detection module
+                      Some facts about statistical tests
+                   =========================================
+
+
+
+This file is a reminder about statistical tests, the mathematical basis of the
+Wilcoxon-Mann-Whitney, Kolmogorov-Smirnov & Pearson chi-square detection
+module. You might be interested in reading it if you feel uncomfortable with
+statistics or hypotheses testing, or if it has been months since you last used
+statistics. However, you should not read it if you are fluent with two-sample
+hypothesis testing, or are a statistician.
+
+Extensive studies of statistical tests, and detailled explainations of
+Wilcoxon-Mann-Whitney ranks test, Kolmogorov-Smirnov c.d.f. test and Pearson
+chi-square test of homogeneity may be found in litterature, as well as, to
+some extend, in the author's internship report at the University of Tübingen,
+Wilhelm Schickard Institute for computer networks, mai - juli 2006.
+
+Therefore, we will not present the reader with an exhaustive and detailled
+study of two-sample hypothesis testing, but only with a few facts and ideas
+useful to understand the detection module statistical test functions.
+
+Please note that we will not explain how these three tests work: this is done
+in litterature and, to some extend, at the begining of the three .cpp files
+implementing these tests. We will only explain the ideas common to all
+two-sample hypotheses tests.
+
+
+
+Table of contents
+=================
+
+I   - Samples, hypothesis, errors
+II  - Test statistic, critical value
+III - One-sided and two-sided hypotheses and tests
+IV  - Significance level, quantile
+V   - P-value
+
+
+
+I - Samples, hypothesis, errors
+===============================
+
+Suppose we own two collections of traffic observations, x = (x_1, ..., x_n)
+and y = (y_1, ..., y_m). For instance, x could be the "old" collection, i.e.
+representing network activity between t-T' and t-T, and y could be the "new"
+collection, representing network activity between t-T and t.
+
+In behaviour-based network anomaly detection, we are facing the problem of
+deciding, on the basis of these traffic observations, whether there is an
+anomaly, i.e. x is really different from y.
+
+We can formalise this problem as a two-sample statistical test: let
+X = (X_1, ..., X_n) denote a sample of n independent random variables from
+the same distribution and Y = (Y_1, ..., Y_m) denote a sample of m independent
+random variables from another same distribution. Are the distribution functions
+of samples X and Y the same? If yes, then there is no reason to worry about
+anomalies.
+
+We can formulate the hypothesis of the test as:
+
+H_0: states that the distribution functions are the same;
+     called the "null hypothesis"
+H_1: states that they are not the same;
+     called the "alternative hypothesis"
+
+To determine which hypothesis is true, the statistician will gather data
+(observations, realisations: for instance, x = (x_1, ..., x_n) is a realisation
+of sample X = (X_1, ..., X_n)). However, as this data is empirical, he has
+no means to ensure that the hypothesis it will hint at is indeed the true
+hypothesis. Thus we define the two possible errors:
+
+Type I  error: rejecting the null hypothesis while it is true
+Type II error: failing to reject the null hypothesis while it is false
+
+(Failing to reject H_0 is the same as accepting it, but in statistics, we are
+used to speaking in terms of rejecting H_0.)
+
+The purpose of the statistician is to decide whether it is wiser to reject H_0
+or not (on the basis of the observations), i.e. to minimise the risk of making
+a mistake (on the basis of the observations).
+
+
+
+II - Test statistic, critical value
+===================================
+
+To achieve his goal, our statistician will try to measure the differences
+between the two samples, i.e. he will use a test statistic:
+
+T: X = (X_1, ..., X_n) --> T(X) \in R
+
+A test statistic is no more than a function from the sample space into R,
+the set of real numbers (please note that X does not represent the "old
+traffic" as in the previous part; now we're speaking of any sample in general).
+
+We divide R into two subsets, C and R\C, name C the critical region, or
+rejection region, of the test, and define it as the values of the test
+statistic that lead to the rejection of the null hypothesis H_0. That means
+that if the observation of X is x = (x_1, ..., x_n) with T(x) \in C, then
+we reject the null hypothesis.
+
+The rejection region has no particular form à-priori, however, the statistician
+very often designs his test statistics so that their rejection region have an
+easily manageable form: intervals. That is why test statistics are usually a
+measure of the difference between the two samples, and C an interval of the
+form [c, +\infty[: the bigger the difference, the bigger the test statistic,
+and the clearer our impression that the two samples are not drawn from the same
+distribution, i.e. the bigger the test statistic until it reaches a threshold,
+c, chosen by the statistician, above which the null hypothesis will be rejected
+as too unlikely.
+
+We name critical value(s) the value(s) separating the rejection region from the
+rest of R. The critical value is c in the previous paragraph, and the test
+could be written "on the basis of the observation x = (x_1, ..., x_n), reject
+H_0 if the value T(x) of the test statistic is greater than a certain
+threshold c"; however, in other situations, it could be "if the value T(x) is
+smaller than c", or inside of a certain interval, or outside of it... It really
+depends of how the test statistic was designed by the statistician!
+
+
+
+III - One-sided and two-sided hypotheses and tests
+==================================================
+
+When we can formulate a test as one of the forms "reject H_0 if T(x) >= c", or
+"if T(x) <= c", "if |T(x) - a| <= c", etc., there is some vocabulary to know.
+For instance, in a test of the form:
+
+H_0: T == a
+H_1: T != a
+
+we say that H_0 is a simple hypothesis and H_1 a two-sided hypothesis.
+On the contrary, for:
+
+H_0: T <= a
+H_1: T >  a
+
+both hypotheses are one-sided. For a test of the form:
+
+H_0: |T-a| <= h
+H_1: |T-a| >  h
+
+as it is an approximate of the first example, we keep naming H_0 a simple
+hypothesis and H_1 a two-sided hypothesis.
+
+A one-sided, resp. two-sided test, is a test in which the alternative
+hypothesis is one-sided, resp. two-sided.
+
+
+
+IV - Significance level, quantile
+=================================
+
+We said previously that the aim of the statistician's work was to minimise the
+risk of making an error when deciding in favour of one or the other hypothesis.
+To do so, he defines an useful quantity: the significance level.
+
+A test is said to have significance level alpha if the probability of making
+a type I error during the test is alpha. For instance, if we conduct a test
+at level of significance 0.13, we know that when rejecting H_0 because of some
+observed data, the odds that H_0 is nevertheless true are 13%. In other words,
+we allow ourselves to be wrong at probability 0.13 when rejecting H_0.
+
+The origin of the significance level is the necessity for a statistician to try
+and minimise both type I and type II errors, whereas these two goals work one
+against the other (indeed, to be sure of never making a type I error, the best
+solution is never to reject it... but if we do so, then we maximise the odds of
+making type II errors!). To overcome this difficulty, statisticians choose a
+significance level for their tests before they begin (the choice of a
+particular value for alpha depending of how serious it is to make a type I
+error), so that they are sure that the probability of making a type I error is
+the chosen value, and then concentrate on the other risk: trying to minimise
+type II errors.
+
+There remains one question: how to make a test have desired significance level
+alpha? What is the difference between a test and the same test at significance
+level alpha? The answer resides in the link between significance levels and
+critical values: choosing one automatically specifies the other.
+
+Suppose we want a test of the form "reject H_0 when T(x) >= c" to have level of
+significance alpha. Which critical value c are we going to choose to determine
+when rejecting H_0 and when accepting it, so that the probability of a type I
+error to occur is alpha?
+
+The very definition of alpha reads alpha = P(H_0 rejected | H_0 true), i.e.
+alpha = P(T(x) >= c | H_0 true). This translates into P(T(x) <= c) = 1-alpha,
+assuming H_0 is true; and this last equation translated into English is the
+expression "c is the (1-alpha)-quantile of T" (still assuming H_0 is true),
+because of the following definition:
+
+"For a random variable X and 0 <= m <= 1, we name m-quantile of X
+(or m-quantile of the distribution function of X) the number q such than
+P(X <= q) = m."
+
+Of course, when the test is of another form as "reject H_0 when T(x) >= c", we
+have to adapt the result. For instance, we get c as the (1-alpha/2)-quantile
+of T when the test is of the form "reject H_0 when |T(x)| >= c" and the
+distribution function of T is symetrical from each side of 0.
+
+For tests of the form "reject H_0 when T(x) >= c", alpha = P(T(x) >= c) =
+\int_{c}^{+\infty} t(x) dx, where t(x) is the distribution function of T,
+i.e. alpha is the area under the curve of the distribution function of T
+and at the right side of c -- the "tail" side. For this reason, we sometimes
+refer to alpha as "the tail area".
+
+
+
+V - P-value
+===========
+
+The main problem with critical values and significance levels is that they are
+numbers chosen a-priori by the statistician, before his tests begin. This is
+not really relevant, because he has no knowledge beforehand of how good this
+choice is; only an idea, more or less precise, of where to settle the limits
+of the rejection region.
+
+For instance, let say a statistician is conducting a test at significance level
+0.05, a value that sets his critical value to 14.2 and his rejection region to
+all values above 14.2. At the end of the test, the value of the test statistic
+is 17.9. Was 14.2 the best critical value to choose? Any other value less than
+or equal to 17.9 would have been a good critical value too; the result of the
+test would have been the same (rejection of H_0).
+
+Yet among all these potential critical values, 17.9 is special: it is the
+biggest critical value to which we would have rejected H_0 when observing this
+test result, a value that leads to computing a smaller significance level
+(thanks to the link between critical values, significance levels and
+quantiles). For instance, using a table of the quantiles of the distribution
+function of the test statistic, our statistician could find another value
+for alpha; let say alpha = 0.0034.
+
+This specific alpha, the smallest significance level to which our statistician
+would reject H_0 considering the observation, is called the p-value of the
+observation for the test statistic, and is noted p.
+
+It suddenly seems really easy to reject H_0: if we had not computed the p-value
+of the observation, we would have rejected H_0 knowing that we may be wrong
+at probability 0.05. But now that we have the p-value, we know that we can
+reject H_0 with a type I error probability of 0.0034 only!
+
+In this way, the p-value of an observation appears as a kind of "evidence" for
+(if close to 1) or against (if close to 0) the null hypothesis. After computing
+the p-value, we can say that we "can reject the null hypothesis to any
+significance level greater than the p-value". Computing a critical value to
+know if we reject H_0 of not becomes a not-so-important matter when we have
+the p-value of the observation; we can decide to reject H_0 if the p-value is
+smaller than a certain significance level we chosed.
+
+Besides, a p-value is related to an observation. The evolution of p-values
+during a series of tests may be a valuable information: for instance, if the
+same test is conducted every t seconds on some time-dependent data, we are
+provided with real-time information about how likely H_0 is every t seconds.
+
+Using the link between critical values and significance levels, we can get
+some useful expressions of the p-value, as a p-value is some sort of
+significance level. The method is the same as explained before, except that
+the critical value c is not chosen a-priori but defined as the result of
+the test statistic at the end of the test (let t denote this observed value
+of T). For instance, for a test of the form "reject H_0 when T >= c", we get
+c = t, and then (as explained previously), t is the (1-alpha)-quantile of T,
+so 1-p = 1-alpha = P(T <= t) by definition of the quantile. Conclusion:
+p = 1 - P(T <= t).
+
+Of course, for other forms of tests, we have to adapt this result. For
+instance, for tests of the form "reject H_0 if |T-a| >= c", assuming that
+the distribution of T is symmetric from each side of a, we easily get:
+1 - p/2 = P(T <= a + t).
+
+This expressions of the p-value are quite useful when programming tests,
+because provided the distribution function of T is a "typical" d.f., there
+exists in some scientific library some function that returns its cumulative
+distribution function, i.e. the value cdf(t) = P(T <= t). That enables us
+to compute easily the p-value of our observation t.
+
+
+
+Conclusion
+==========
+
+Well, congratulations! Now you know many useful notions to understand
+completely two-sample hypothesis testing, as well as the mathematical basis
+of the Wilcoxon-Mann-Whitney, Kolmogorov-Smirnov & Pearson chi-square detection
+module.
+
+Further reading includes the begining of the three .cpp files implementing
+the Wilcoxon-Mann-Whitney, Kolmogorov-Smirnov & Pearson chi-square test
+statistics. There you will learn the how and why of these three test
+statistics.
+
+Thanks for the reading!
+
+
+
+--
+
+For any request, comment, complain, wedding proposal, etc,
+feel free to email romain(.)michalec(at)ensta(.)org.
+
+2006/09/28

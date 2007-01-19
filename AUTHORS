@@ -1,0 +1,30 @@
+collector:
+	Lothar Braun <braunl@informatik.uni-tuebingen.de>
+
+concentrator:
+	Christoph Sommer http://www.deltadevelopment.de/users/christoph/ipfix/
+	Lothar Braun <braunl@informatik.uni-tuebingen.de
+
+commonutils:
+	Lothar Braun <braunl@informatik.uni-tuebingen.de
+
+commonutils/idmef:
+	Raimondas Sasnauskas <sasnausk@informatik.uni-tuebingen.de>
+	Jan Petranek <jan#at#petranek#dot#de>
+	Lothar Braun <braunl@informatik.uni-tuebingen.de>
+
+detectionmodules:
+
+detctionbase, examplemodules:
+	Lothar Braun <braunl@informatik.uni-tuebingen.de>
+
+requin:
+	Olivier Paul, GET/INT
+
+chisquaremodule, kolmogorovmodule, wilcoxonmodule:
+	Based on the modules written by Guillaume Bouchez <????> and Marina Santiago Castellanos <mar2807@yahoo.es>
+	Lothar Braun <braunl@informatik.uni-tuebingen.de>
+
+snortmodule:
+	Nico Weber <weber@informatik.uni-tuebingen.de>
+	

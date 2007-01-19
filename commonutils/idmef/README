@@ -1,0 +1,254 @@
+				IdmefMessage
+
+
+The IdmefMessage class creates a IDMEF-Message with/without the DIADEM extension
+and publishes it to the xmlBlaster server.
+
+1.) Create a "empty" IDMEF-Message:
+
+ IdmefMessage message("my-detection-module", "statistical anomaly detection");
+ or
+ IdmefMessage message();
+
+(Note: Within the detectionmodules you can also use the member functions
+
+  IdmefMessage& getNewIdmefMessage("my-detection-module", "statistical anomaly detection");
+  or
+  IdmefMessage& getNewIdmefMessage();
+)
+
+After one of these constructors is called, following IDMEF-Message is available:
+
+ <IDMEF-Message xmlns="http://iana.org/idmef" version="1.0">
+ <Alert messageid="0">
+ <Analyzer name="my-detection-module"/>
+ <CreateTime ntpstamp="">2005-12-04T22:08:01+0100</CreateTime>
+ <Target/>
+ <Classification text="statistical anomaly detection"/>
+ <Assessment/>
+ <AdditionalData type="xml"/>
+ </Alert>
+ </IDMEF-Message>
+
+2.) Now we create a <Analyzer> node to provide more information about the monitor
+
+ message.createAnalyzerNode("ipv4-addr", "10.0.0.1", "255.255.255.0", "DMZ4");
+ or
+ message.createAnalyzerNode("monitor-4", "DMZ4")
+
+ <IDMEF-Message xmlns="http://iana.org/idmef" version="1.0">
+ <Alert messageid="0">
+ <Analyzer name="my-detection-module">
+ 	<Node category="unknown">
+		<Address category="ipv4-addr">
+			<address>10.0.0.1</address>
+			<netmask>255.255.255.0</netmask>
+		</Address></Node>
+	</Analyzer>
+ <CreateTime ntpstamp="">2005-12-04T22:17:05+0100</CreateTime>
+ <Target/>
+ <Classification text="statistical anomaly detection"/>
+ <Assessment/>
+ <AdditionalData type="xml"/>
+ </Alert>
+ </IDMEF-Message>
+		
+You can also set some attributes for the <Analyzer> node:
+
+ message.setAnalyzerAttr("DDoS", "DIADEM", "statistical anomaly detection", "0.1");
+	
+3.) Create <Target> node
+
+message.createTargetNode("unknown", "ipv4-addr", "10.0.0.10", "255.255.255.255");
+
+ <IDMEF-Message xmlns="http://iana.org/idmef" version="1.0">
+ <Alert messageid="0">
+ <Analyzer name="my-detection-module">
+	<Node category="unknown">
+		<Address category="ipv4-addr">
+			<address>10.0.0.1</address>
+			<netmask>255.255.255.0</netmask>
+		</Address></Node>
+	</Analyzer>
+ <CreateTime ntpstamp="">2005-12-04T22:22:06+0100</CreateTime>
+ <Target decoy="unknown">
+	<Node category="unknown">
+		<Address category="ipv4-addr">
+			<address>10.0.0.10</address>
+			<netmask>255.255.255.255</netmask>
+		</Address>
+	</Node>
+ </Target>
+ <Classification text="statistical anomaly detection"/>
+ <Assessment/>
+ <AdditionalData type="xml"/>
+ </Alert>
+ </IDMEF-Message>
+
+4.) Create <AssessmentNode> node
+
+message.createAssessmentNode("high", "other", "0.04", "0.5");
+
+ <IDMEF-Message xmlns="http://iana.org/idmef" version="1.0">
+ <Alert messageid="0">
+ <Analyzer name="my-detection-module">
+        <Node category="unknown">
+                <Address category="ipv4-addr">
+                        <address>10.0.0.1</address>
+                        <netmask>255.255.255.0</netmask>
+                </Address></Node>
+        </Analyzer>
+ <CreateTime ntpstamp="">2005-12-04T22:22:06+0100</CreateTime>
+ <Target decoy="unknown">
+        <Node category="unknown">
+                <Address category="ipv4-addr">
+                        <address>10.0.0.10</address>
+                        <netmask>255.255.255.255</netmask>
+                </Address>
+        </Node>
+ </Target>
+ <Classification text="statistical anomaly detection"/>
+ <Assessment>
+	<Impact severity="high" type="other">0.04</Impact>
+	<Confidence>0.5</Confidence>
+ </Assessment>
+ <AdditionalData type="xml"/>
+ </Alert>
+ </IDMEF-Message>
+
+These are the functions according to the IDMEF-Message format
+(take a look at idmef-message.dtd file for more information)
+
+6.) Following functions create XML nodes according to the DIADEM extension
+    (take a look at diadem.dtd file)
+
+  - void createExtAssessmentNode(const std::string& severity, const std::string& spread,
+		                 const std::string& intensity, const std::string& confidence);
+
+  - void createExtNetworkLayerNode();
+  - void createExtNetworkLayerAddrNode(const std::string& src_dst, const std::string& IPv4Address,
+                                       const std::string& IPv4Netmask);
+  - void createExtNetworkLayerElemNode(const std::string& nodeName, const std::string& value);
+
+  - void createExtStatisticsNode(const std::string& octetRate, const std::string& packetRate,
+                                 const std::string& packetFrequency, const std::string& anomalyMeasure);
+
+  - void createExtObservationPointNode(const std::string& OPName, const std::string& IPv4Address);
+
+Example:
+
+ message.createExtAssessmentNode("330", "200", "700", "370"); 
+ message.createStatisticsNode("34", "35", "36", "37");
+ message.createExtNetworkLayerNode();
+ message.createNetworkLayerAddrNode("src", "10.0.1.0", "255.255.255.0");
+ message.createNetworkLayerElemNode("DIADEM:IPv4NextProtocol", "TCP");
+ message.createObservationPointNode("M-1", "10.0.0.100");
+ message.createObservationPointNode("M-2", "10.0.0.200");
+
+You can also change the attributes of these nodes.
+Take a look at "idmefmessage.h" or create Doxygen documentation.
+
+Output:
+
+ <IDMEF-Message xmlns="http://iana.org/idmef" version="1.0">
+ <Alert messageid="0">
+ <Analyzer name="my-detection-module"/>
+ <CreateTime ntpstamp="">2005-12-04T22:44:51+0100</CreateTime>
+ <Target decoy="unknown">
+	<Node category="unknown">
+		<Address category="ipv4-addr">
+			<address>10.0.0.10</address>
+			<netmask>255.255.255.255</netmask>
+		</Address>
+	</Node>
+ </Target>
+ <Classification text="statistical anomaly detection"/>
+ <Assessment>
+	<Impact severity="high" type="other">0.04</Impact>
+	<Confidence>0.5</Confidence>
+ </Assessment>
+ <AdditionalData type="xml">
+	<DIADEM:Observation>
+		<DIADEM:Assessment>
+			<DIADEM:Severity Base="1000">330</DIADEM:Severity>
+			<DIADEM:Spread Base="1000">200</DIADEM:Spread>
+			<DIADEM:Intensity Base="1000">700</DIADEM:Intensity>
+			<DIADEM:Confidence Base="1000">370</DIADEM:Confidence>
+		</DIADEM:Assessment>
+		<DIADEM:Statistics>
+			<DIADEM:OctetRate exponent="0">34</DIADEM:OctetRate>
+			<DIADEM:PacketRate exponent="0">35</DIADEM:PacketRate>
+			<DIADEM:PacketFrequency>36</DIADEM:PacketFrequency>
+			<DIADEM:AnomalyMeasure Base="1000">37</DIADEM:AnomalyMeasure>
+		</DIADEM:Statistics>
+		<DIADEM:TrafficDescription>
+			<DIADEM:NetworkLayer protocol="IPv4">
+				<DIADEM:IPv4Source>
+					<DIADEM:IPv4Address>10.0.1.0</DIADEM:IPv4Address>
+					<DIADEM:IPv4Netmask>255.255.255.0</DIADEM:IPv4Netmask>
+				</DIADEM:IPv4Source>
+				<DIADEM:IPv4NextProtocol>TCP</DIADEM:IPv4NextProtocol>
+			</DIADEM:NetworkLayer>
+		</DIADEM:TrafficDescription>
+		<DIADEM:ObservationPoint>
+			<DIADEM:OPName>M-1</DIADEM:OPName>
+			<DIADEM:IPv4Address>10.0.0.100</DIADEM:IPv4Address>
+		</DIADEM:ObservationPoint>
+		<DIADEM:ObservationPoint>
+			<DIADEM:OPName>M-2</DIADEM:OPName>
+			<DIADEM:IPv4Address>10.0.0.200</DIADEM:IPv4Address>
+		</DIADEM:ObservationPoint>
+	</DIADEM:Observation>
+ </AdditionalData>
+ </Alert>
+ </IDMEF-Message>
+
+7.) publish the IDMEF-message to the xmlBlaster server under given topic
+
+	/* connect to the xmlBlaster */
+        communicationObject *comm = NULL;
+        comm = new xmlBlasterCommObject(argc, argv, NULL, "idmefblaster");
+        if (comm == NULL) {
+                std::cerr << "Cannot initialize xmlBlaster." << std::endl
+                          << "Make sure, the xmlBlaster server is up and running." << std::endl;
+                exit (-1);
+        }
+
+        int r;
+        r = (*comm).connect();
+        if (r != 0) {
+                std::cerr << "Cannot connect to xmlBlaster!" << std::endl;
+                exit (-1);
+        }
+
+	/* publish the IDMEF-Message */
+        message.publish(comm, "DDoS");
+
+(Note:
+
+You don't have to care about connecting to xmlBlaster sites within your detection
+modules.
+This will be done by the detection module base class automatically. Use the the
+member function
+
+void sendIdmefMessage("your topic", message);
+
+See ipfix-collector/detectionmodules/examplemodules/README for more information on
+this topic
+)
+
+
+As already mentioned above you find the whole function definitions in "idmefmessage.h".
+Doxygen gives also a very good overview over the IdmefMessage class.
+
+The current state of the IdmefMessage class supports the main functionality of the
+IDMEF-Message format. DIADEM extension allows us to describe an assessment in more detail.
+
+TODO: add TransportLayer and other layers above
+
+
+Any problems/comments/bugs/wishes mail me:
+
+sasnausk@informatik.uni-tuebingen.de
+<Raimondas Sasnauskas> 
+

@@ -1,0 +1,386 @@
+<!-- DIADEM file structure version 0.1 by Raimondas Sasnauskas,
+adopted from DIDODA file structure version 0.1 of 2005-4-26 by Jan Petranek -->
+
+<!-- General note: Several elements are not yet fully defined. Nevertheless, 
+there is already a useful place within the document tree, where these
+should go, so the elements are currently defined as empty elements. -->
+ 
+ 
+
+<!--
+| outcome of an investigation. it is either 
+| - unknown (no investigation yet. default state)
+| - pending (investigation started, but result yet unknown)
+| - result (investigation returned a result)
+| - diverging (investigation returned too many different values here.
+|   This may be a sign of a randomly filled field)
+ -->
+   <!ENTITY % attribute.investigationState 
+   'investigationState 
+   	( unknown | pending | diverging | complete ) "unknown"
+     '>
+   
+    
+<!-- Can be used to converts units. The exponent is always in a base of 
+10 (ten, for those who are fixed on binary!)
+e.g. the PacketRate defines the packets per second. 
+<DIADEM:PacketRate exponent="-2">10</DIADEM:PacketRate>
+means 0.10 packets / second or 6 packets / minute  
+-->    
+    <!ENTITY % attribute.Exponent 
+    ' exponent CDATA "1" '>    
+    
+<!-- The base is used to normalize estimated values, where base is 
+the maximum permissible value for the described number. 
+You may think of the value as percentage or promille.
+This mainly avoids floating point numbers -->
+    <!ENTITY % attribute.Base
+    ' base CDATA "1000" '>    
+
+
+<!-- The namespace we use -->
+<!--TODO: get a URL/ URI to point to -->   
+
+<!ENTITY % attribute.namespace
+'xmlns:DIADEM CDATA  #FIXED
+"http://www-ri.informatik.uni-tuebingen.de/diadem" '>  
+
+<!-- Root element of the DIADEM Observation. This is meant to be included 
+as an additional data element within an IDMEF-Message
+-->
+<!ELEMENT DIADEM:Observation (
+DIADEM:Assessment,				     
+DIADEM:TrafficFilter?,	
+DIADEM:TrafficDescription?,
+DIADEM:Statistics?,
+DIADEM:HTTP?,
+DIADEM:RuleBased?,
+DIADEM:Correlation?,
+DIADEM:ObservationPoint*
+)>
+
+<!-- The namespace we use -->
+<!--TODO: get a URL/ URI to point to -->
+
+<!ATTLIST DIADEM:Observation
+%attribute.namespace;
+version CDATA #FIXED "0.1"
+>
+
+   <!-- ===============================================================
+    ===================================================================
+    === Event Assessment                                            ===
+    ===================================================================
+    =============================================================== -->
+
+<!-- a more detailed assessment as in the IDMEF-Model. 
+Elements explained below -->
+<!ELEMENT DIADEM:Assessment (
+	DIADEM:Severity,
+	DIADEM:Spread,
+	DIADEM:Intensity,
+	DIADEM:Confidence
+)>
+
+<!ATTLIST DIADEM:Assessment
+%attribute.namespace;>
+
+<!-- The potential threat of the event. 
+E.g. a monitor finds an indication of a possible DoS-attack 
+against the monitoring system itself, which is a severe threat.
+The overall impact of the attack has to be estimated together
+with the confidence and the intensity parameters.
+-->
+<!ELEMENT DIADEM:Severity (#PCDATA) >
+<!ATTLIST DIADEM:Severity %attribute.Base;
+%attribute.namespace;
+>
+
+<!-- How many systems are already affected? (Number of Observation Points)
+Will be updated, if a correlation between observations from different 
+Observation Points is found
+-->
+<!ELEMENT DIADEM:Spread (#PCDATA) >
+<!ATTLIST DIADEM:Spread
+%attribute.namespace;>
+
+<!-- Indicates the local intensity of the event, based on the 
+related amount of traffic -->
+<!ELEMENT DIADEM:Intensity (#PCDATA) >
+<!ATTLIST DIADEM:Intensity %attribute.Base;
+%attribute.namespace;
+>
+
+<!-- Indicates the analyzer's confidence in having correctly identified 
+the event (as opposed to generating a false positive)
+Note: In case of a statistical anomaly, this indicates, if the event is
+a real anomaly. This shall not be confused with malicious behaviour.
+Thus, for comparision, the confidence of statistical tool's shall be 
+reduced by some factor.  
+-->
+<!ELEMENT DIADEM:Confidence (#PCDATA) >
+<!ATTLIST DIADEM:Confidence %attribute.Base;
+%attribute.namespace;
+>
+
+
+   <!-- ===============================================================
+    ===================================================================
+    === Traffic Filter                                              ===
+    ===================================================================
+    =============================================================== -->
+
+<!-- Network filter the monitor uses -->
+
+<!ELEMENT DIADEM:TrafficFilter (
+DIADEM:LinkLayer?,
+DIADEM:NetworkLayer?,
+DIADEM:TransportLayer?,
+DIADEM:ApplicationLayer?
+)>
+<!ATTLIST DIADEM:TrafficFilter
+%attribute.namespace;>
+
+   <!-- ===============================================================
+    ===================================================================
+    === Traffic Descripttion                                        ===
+    ===================================================================
+    =============================================================== -->
+<!-- Describes the observed network traffic
+Hint: The fields here should be convertable to a TrafficFilter 
+--> 
+    
+<!ELEMENT DIADEM:TrafficDescription (
+DIADEM:LinkLayer?,
+DIADEM:NetworkLayer?,
+DIADEM:TransportLayer?,
+DIADEM:ApplicationLayer? 
+
+)>
+
+<!ATTLIST DIADEM:TrafficDescription
+%attribute.namespace;>
+
+<!-- Description of network traffic on the link layer-->
+<!-- TODO: Currently unused! Describe this, if you need linklayer support -->
+<!ELEMENT DIADEM:LinkLayer EMPTY>
+<!ATTLIST DIADEM:LinkLayer
+%attribute.namespace;>
+
+			      
+<!-- Description of traffic on the network layer. 
+Supports either IPv4 or IPv6
+-->
+<!ELEMENT DIADEM:NetworkLayer (
+(DIADEM:IPv4Source?,
+DIADEM:IPv4Destination?,
+DIADEM:IPv4TTL?,
+DIADEM:IPv4Options?,
+DIADEM:IPv4Fragmentation?,
+DIADEM:IPv4TOS?,
+DIADEM:IPv4Length?,
+DIADEM:IPv4NextProtocol?)
+|
+(DIADEM:IPv6Source?,
+DIADEM:IPv6Destination?)
+)>
+
+<!-- indicates, if IPv4 or IPv6 is used -->
+<!ATTLIST DIADEM:NetworkLayer
+protocol (IPv4 | IPv6) "IPv4" 
+%attribute.namespace;
+>
+
+<!-- Description of network traffic on the transport layer-->
+<!-- TODO: Currently unused! Describe this, if you need
+transportlayer support -->
+<!ELEMENT DIADEM:TransportLayer EMPTY>
+<!ATTLIST DIADEM:TransportLayer
+%attribute.namespace;>
+
+   <!-- ===============================================================
+    ===================================================================
+    === Elements for IPv4                                           ===
+    ===================================================================
+    =============================================================== -->
+
+<!-- an IPv4 source address 
+The netmask identifies the subnet, where the event goes to.
+-->
+<!ELEMENT DIADEM:IPv4Source
+(DIADEM:IPv4Address, DIADEM:IPv4Netmask)>
+
+
+<!ATTLIST DIADEM:IPv4Source %attribute.investigationState;
+%attribute.namespace;>
+
+<!-- an IPv4 destination address 
+The netmask identifies the subnet, where the event comes from.-->
+<!ELEMENT DIADEM:IPv4Destination
+(DIADEM:IPv4Address, DIADEM:IPv4Netmask) >
+
+<!ATTLIST DIADEM:IPv4Destination %attribute.investigationState; 
+%attribute.namespace;>
+
+<!-- IPv4 Address given in dot-notation, e.g. 123.123.123.123 -->
+<!ELEMENT DIADEM:IPv4Address (#PCDATA)>
+<!ATTLIST DIADEM:IPv4Address %attribute.namespace;>
+
+<!-- IPv4 Address given in dot-notation, e.g. 255.255.255.0 -->
+<!ELEMENT DIADEM:IPv4Netmask (#PCDATA)>
+<!ATTLIST DIADEM:IPv4Netmask %attribute.namespace;>
+
+<!-- Other IP-Options -->
+<!-- TODO: subject to change in future versions! -->
+<!ELEMENT DIADEM:IPv4TTL (#PCDATA) >
+<!ATTLIST DIADEM:IPv4TTL %attribute.investigationState;
+%attribute.namespace;>
+<!ELEMENT DIADEM:IPv4Options (#PCDATA) >
+<!ATTLIST DIADEM:IPv4Options %attribute.investigationState;
+%attribute.namespace;>
+<!ELEMENT DIADEM:IPv4Fragmentation (#PCDATA)>
+<!ATTLIST DIADEM:IPv4Fragmentation %attribute.investigationState;
+%attribute.namespace;>
+<!ELEMENT DIADEM:IPv4TOS (#PCDATA)>
+<!ATTLIST DIADEM:IPv4TOS %attribute.investigationState;
+%attribute.namespace;>
+<!ELEMENT DIADEM:IPv4Length (#PCDATA) >
+<!ATTLIST DIADEM:IPv4Length %attribute.investigationState;
+%attribute.namespace;>
+
+<!ELEMENT DIADEM:IPv4NextProtocol (#PCDATA) >
+<!ATTLIST DIADEM:IPv4NextProtocol %attribute.investigationState;
+%attribute.namespace;>
+
+   <!-- ===============================================================
+    ===================================================================
+    === Elements for IPv6                                           ===
+    ===================================================================
+    =============================================================== -->
+<!-- an IPv6 source address 
+The netmask identifies the subnet, where the event goes to.
+-->    
+<!ELEMENT DIADEM:IPv6Source
+(DIADEM:IPv6Address, DIADEM:IPv6Netmask)>
+
+
+<!ATTLIST DIADEM:IPv6Source %attribute.namespace;
+%attribute.investigationState; >
+
+
+<!-- an IPv6 destination address 
+The netmask identifies the subnet, where the event comes from-->
+<!ELEMENT DIADEM:IPv6Destination
+(DIADEM:IPv6Address, DIADEM:IPv6Netmask) >
+
+<!ATTLIST DIADEM:IPv6Destination %attribute.namespace; 
+%attribute.investigationState; >
+
+
+<!ELEMENT DIADEM:IPv6Address (#PCDATA)>
+<!ATTLIST DIADEM:IPv6Address %attribute.namespace;>
+
+<!ELEMENT DIADEM:IPv6Netmask (#PCDATA)>
+<!ATTLIST DIADEM:IPv6Netmask %attribute.namespace;>
+
+   <!-- ===============================================================
+    ===================================================================
+    === Statistical Observations                                    ===
+    ===================================================================
+    =============================================================== -->
+<!-- Statistical observations derived from the traffic described above -->
+
+<!ELEMENT DIADEM:Statistics (
+DIADEM:OctetRate?,
+DIADEM:PacketRate?,
+DIADEM:PacketFrequency?,
+DIADEM:AnomalyMeasure?
+)>
+<!ATTLIST DIADEM:Statistics %attribute.namespace; >
+
+<!-- Rate of octets / second.-->
+<!ELEMENT DIADEM:OctetRate (#PCDATA) >
+<!ATTLIST DIADEM:OctetRate %attribute.namespace; %attribute.Exponent; >
+
+<!-- Rate of packets / second.-->
+<!ELEMENT DIADEM:PacketRate (#PCDATA)>
+<!ATTLIST DIADEM:PacketRate %attribute.namespace; %attribute.Exponent;>
+
+<!-- Packet frequency -->
+<!ELEMENT DIADEM:PacketFrequency (#PCDATA)>
+<!ATTLIST DIADEM:PacketFrequency %attribute.namespace; >
+
+<!-- measures, how "unusual" the event seems to the local system-->
+<!ELEMENT DIADEM:AnomalyMeasure (#PCDATA)>
+<!ATTLIST DIADEM:AnomalyMeasure %attribute.namespace; %attribute.Base;>
+
+   <!-- ===============================================================
+    ===================================================================
+    === HTTP attack description                                     ===
+    ===================================================================
+    =============================================================== -->
+<!--  TODO: describe this element  -->
+
+<!ELEMENT DIADEM:HTTP (
+DIADEM:Parameters
+)>
+<!ATTLIST DIADEM:HTTP %attribute.namespace; >
+
+<!ELEMENT DIADEM:Parameters (
+DIADEM:Method,
+DIADEM:Uri,
+DIADEM:Result
+)>
+<!ATTLIST DIADEM:Parameters %attribute.namespace; >
+
+<!ELEMENT DIADEM:Method (#PCDATA)>
+<!ATTLIST DIADEM:Method %attribute.namespace; >
+
+<!ELEMENT DIADEM:Uri (#PCDATA)>
+<!ATTLIST DIADEM:Uri %attribute.namespace; >
+
+<!ELEMENT DIADEM:Result (#PCDATA)>
+<!ATTLIST DIADEM:Result %attribute.namespace; >
+
+   <!-- ===============================================================
+    ===================================================================
+    === Rule / Policy based events                                  ===
+    ===================================================================
+    =============================================================== -->
+<!-- if rule based detection is used, this element shall contain further
+information about the rules that triggered the event -->
+    
+<!ELEMENT DIADEM:RuleBased EMPTY>
+<!ATTLIST DIADEM:RuleBased %attribute.namespace; >
+<!-- TODO: Describe this element -->
+
+   <!-- ===============================================================
+    ===================================================================
+    === Correlated Alerts                                           ===
+    ===================================================================
+    =============================================================== -->
+
+<!ELEMENT DIADEM:Correlation EMPTY>
+<!ATTLIST DIADEM:Correlation %attribute.namespace; >
+<!-- TODO: Describe this element -->
+
+
+   <!-- ===============================================================
+    ===================================================================
+    === Observation Points                                          ===
+    ===================================================================
+    =============================================================== -->
+<!-- names an observation point (a single network monitor), where
+the event was observed. useful, if several distributed monitors 
+send their data to the analyzer; the analyzer can list all 
+observation points, where the event was observed -->
+    
+<!ELEMENT DIADEM:ObservationPoint (DIADEM:OPName, DIADEM:OPAddress)>
+<!ATTLIST DIADEM:ObservationPoint %attribute.namespace; >
+
+<!-- Name of the Observation Point -->
+<!ELEMENT DIADEM:OPName (#PCDATA) >
+<!ATTLIST DIADEM:OPName %attribute.namespace; >
+<!-- IP-Address of the Observation Point (netmask seems pointless here) -->
+<!ELEMENT DIADEM:OPAddress (DIADEM:IPv4Address|DIADEM:IPv6Address) >
+<!ATTLIST DIADEM:OPAddress %attribute.namespace; >

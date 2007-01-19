@@ -1,0 +1,129 @@
+				Ipfix-Collector
+
+See INSTALL for information on how to build the system.
+
+All configuration work is done via XML-files (see collector/collector.xml
+for a sample).
+
+
+There are 6 important items, that can be configured:
+
+1.) <working_dir>direcotry/</working_dir>
+
+Specifies the working directory for the collector and the detection modules.
+All paths (especially the paths for the configuration files)  can be relative
+to this working directory.
+
+
+2.) <modules></modules>
+
+This tag starts the module section. All modules that should be started by the
+collector should be specified here.
+
+2.1) <module></module>
+
+Specifies the parameters for one module.
+
+2.1.1) <filename>path/to/filename</filename>
+
+Pointer to the filename of the module that should be started. You may either
+use a absolut or a relative path. If your path is relative, it will be
+relative to the path given in <working_dir></working_dir>
+
+2.1.2) <arg>foo</arg>
+
+This tag is used to construct the command line paramters for the modules. You
+may give any number of command line arguments. If you compiled the system with
+IDMEF support, the first argument to the module _MUST_ be a configuration file
+that contains the address of an running xmlBlaster instance.
+The module will die immediately, if you don't pass that configuration file or
+if it can't connect to the xmlBlaster given in that file.
+
+3.) <listen_port>n</listen_port>
+
+Specifies the port the collector will listen on. UDP is the only supported
+transport protocol at the moment.
+
+4.) <detectmod_killtime>n</detectmod_killtime>
+
+The collector will kill a detection module, if it assumes that this module
+hangs.
+Deadlocks or hanging detection modules are identified via timers.
+A deadlock is assumed after a "detectmodkilltime" second blocking time.
+
+
+5.) <restart_on_crash>yes|no</restart_on_crash>
+
+Specifies weather a detection module should be restarted after abnormal
+termination (exit state != 0, killed by signal)
+
+6.) <packet_dir>directory/</packet_dir>
+
+tmp directory for storing IPFIX packets. You have to specify a directory
+here, because it is needed for communication between the collector and
+the detection modules.
+It is recommended to mount a ramdisk on the tmp directory (this will
+significantly speed up collectors opteration)
+ATTENTION: The directory specified here will be cleared before using it.
+That means that ALL files in this directory will be deleted
+
+
+		Configuring the player
+		----------------------
+	
+There are 2 items that can be configured:
+
+1.) <action></action>
+ 
+This will set the mode in which the player will operate:
+
+	 off      -- well ... player is turned off
+	 record   -- player operates in recording mode and will record
+	 	     all incoming traffic
+	 replay   -- starts the replaying process. The collector will
+	             be shut down, after all recorded traffic was replayed
+
+2.) <traffic_dir></traffic_dir>
+
+This will specify the directory in which the player will store the recorded
+traffic.
+The player will take the recorded data from this directory, when operating in
+replay mode
+
+
+
+After configuring your collector, start it with
+
+
+
+./collector
+
+
+
+
+The example modules will print their output into first.txt and second.txt
+located in the collectors working directory (You are on debug level 1 by
+default, so that directory will be the starting directory.
+
+See detectionmodules/examplemodules/README for information on how to write 
+your own detection modules.
+
+
+------------------------------------------------------------------------------
+
+Notes:
+
+- The source is not optimized for performance yet.
+  If you run into performance problems, you can speed up the whole
+  system by providing a ramdisk.
+  Create it with "mkfs.ext2 /dev/ram0 8000" (you need ram disk support
+  compiled into your kernel) and mount it on packet_dir/
+  
+
+Feel free to mail any questions, bugs or feature wishes to
+
+<braunl@informatik.uni-tuebingen.de>
+
+
+Cheers,
+	Lothar

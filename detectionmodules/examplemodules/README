@@ -1,0 +1,254 @@
+                Writing Detection Modules
+		=========================
+
+The framework provides two different approches to analyse network traffic. A
+timebased and a recordbased approach.
+
+The first one assumes, that you want to run your tests in regular time
+intervalls. This means that you are collecting data for a specific time peroid
+and analyse all incoming data at once.
+This is the common way to perfom statistical anomaly detection on network
+traffic.
+
+The other approach allows you to analyse each IPFIX record individually. This
+means, that your test will be performed on each record.
+This is the usual approch for signature based attack detection. 
+
+The README describes the development steps to develop a module that follows
+the first approach.
+But there will be some annotation on what you have to do different, when you
+develop a module that does a per-record analysis. They will be marked as 
+"ANNOTATION PER-RECORD:"
+
+So let's go:
+
+			Step One
+                        --------
+
+Start with writing your own data storage class:
+
+-------------------- [ snip ] ----------------------
+
+#include <datastore.h>
+
+class MyStorageClass : public DataStore
+{
+public:
+	MyStorageClass();
+	~MyStorageClass();
+
+	bool recordStart(SourceID sourceID);
+	void addFieldData(int id, byte* fieldData, int fieldDataLength, EnterpriseNo eid = 0);
+	void recordEnd();
+	/* ... */
+};
+
+------------------- [ snap ] -----------------------
+
+The class is used to store the incoming IPFIX data in an user defined format.
+The base detection module class will insert raw IPFIX data into this class
+and you can turn it into you application specific format.
+Instances of this class will be passed to your test function.
+
+There are 3 member functions used to put data into your storage class. They
+are already implemented in the base class. Override (hide) them if necessary.
+
+
+1.) bool recordStart(SourceID);
+
+This method will be called to indicate, that a new IPFIX record is ready to be
+passed to the class.
+
+SourceID is the id of the exporter sending this record (i hope you are famliar
+with the IPFIX protocol :D). 
+
+You can accept this record by returning true. Return false otherwise.
+
+2.) int addFieldData(int id, byte* fieldData, int fieldDataLength, EnterpriseNo eid = 0)
+
+This method is used to pass the IPFIX data into the class.
+
+- id
+	specifies the Ipfix Field ID. See concentrator/ipfix.h for a list of
+	available ids. Only fields with subscribed ids (see Step Two) will be
+	passed to the module.
+ 
+- fieldData
+	well, that's the data :) 
+
+- fieldDataLength
+	Length of fieldData
+
+- eid 
+	Vendor number (used for non standard ipfix data)
+
+
+Note: The memory used by fieldData will be overriden after recordEnd() is 
+called. If you want to store the data, you have to copy it.
+
+
+3.) void recordEnd()
+
+Will be called to indicate that an record ends (no more fields are there to be
+passed to addFieldData().
+
+If you reject a record on recordStart(), recordEnd() will NOT be called.
+
+ANNOTATION PER-RECORD:
+	If you are in per-record analysis mode, recordStart(), addFieldData()
+	and recordEnd() will be called exactly one time (if you reject the
+	record on recordStart, addFieldData() and recordEnd() won't be ever
+	called). This instance will be passed immediately to the test-function
+	after the methods were called.
+
+
+
+			         Step Two
+			         --------
+
+Inherit a class from DetectionBase. This class will perform your test:
+
+-------------------- [ snip ] ----------------------
+
+#include <detectionbase.h>
+
+class MyDetectionModuleClass : public DetectionBase<MyStorageClass>
+{
+/* ... */
+public:
+/* ... */
+	MyDetectionModuleClass();
+	MyDetectionModuleClass(const std::string& filename);
+	~MyDetectionModuleClass();
+	
+	void test(MyStorageClass* myStorageClass);
+}
+
+ANNOTATION PER-RECORD:
+You have to inherit from DetectionBase using other template-paramters
+to enable per-Record mode. You class will look like that:
+
+class MyDetectionModuleClass :  public DetectionBase<MyStorageClass, UnbufferedFilesInputPolicy<SemShmNotifier, MyStorageClass> > {
+// same as above
+}
+
+------------------- [ snap ] -----------------------
+
+The test()-method is called periodically by the base class (use setAlarmTime()
+to set the interval)
+
+ANNOTATION PER-RECORD:
+	Everytime a record is passed to the storage class, this particular
+	instance will be passed to the test()-function.
+	Don't forget to call setAlarmTime(0) within your module class. If you
+	don't do that, test() will be called every 10 seconds with one record.
+	And that's not what you want (trust me ;))
+
+It's parameter myStorageClass contains all subscribed data collected since
+last call to test().
+NOT: You _have_ to delete myStorageClass when you don't need it any longer.
+You will run out of memory, if you forget that!
+
+
+Subscribing data:
+
+You have to subscribe all data fields you are interested in. Use the 
+subscribeTypeId() member function to do this.
+
+Have a look at concentrator/ipfix.h for available field ids. Pass that
+id to subscribeTypeId() and you'll get that data delivered to the
+addFieldData() method of your storage class (of course only if your monitor
+exports that field :))
+
+
+Exporting results:
+
+If you want to export your results via the buildin IDMEF message facility,
+you need to specify the xmlBlasters your messeges should be exported to.
+This is done via a configuration file. You can specify that configuration
+file by passing it's filename to the constructor
+
+DetectionModuleClass(const std::string& filename);
+
+(Note: You can import that filename into your module by command line arguments)
+
+A sample configuration file could look like this:
+
+------------------------ [ snip ] ------------------------------
+
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<XMLBLASTER>
+		<export_to>127.0.0.1:7607</export_to>
+	</XMLBLASTER>
+</configuration>
+				
+------------------------ [ snap ] ------------------------------
+
+This means that your detection module exports its IDMEF messages to host
+127.0.0.1 on port 7607.
+
+Attention:
+The used transport protocol is TCP. If the detection module base class
+cannot establish a connection to one of the targets, it will throw a
+std::runtime_error exception and die immediately.
+
+Sending IDMEF messages:
+
+First: Create a IdmefMessage by calling getNewIdmefMessage():
+
+IdmefMessage& message = getNewIdmefMessage("MyDetectionmoduleName",
+                                           "MyClassificationName");
+
+Build your message by using the IdmefMessage member functions. See the doxygen
+documentation or the file xxxxxx (by the time of writing this document the
+IDMEF readme document isn't finished. if you can read this hint, we forgot to
+update the readme) for more information.
+
+After inserting all inforamtions, you can send your message by calling:
+
+sendIdmefMessage("My topic", message);
+
+Get a new "empty" IDMEF message (of course only if you don't want to update
+your message ;)) by calling
+
+message = getNewIdmefMessage();
+
+(Note: the attentive reader already realized that the second call to
+getNewIdmefMessage() doesn't have any parameters. The parameters to the first
+call are stored in the base class and are inserted into the message when
+calling getNewIdmefMessage() without parameters.
+If you never call getNewIdmefMessage(const std::string&, const std::string&),
+your messages will carry an empty name and an empty classification field)
+
+
+				Step Three
+				----------
+
+
+Create a main function for your programm. The function could look like this:
+
+
+int main(int argc, char** argv)
+{
+  MyDetectionModuleClass m;
+  // or MyDetectionModuleClass m(argv[1]) if you want to use IDMEF support
+  return m.exec();
+}
+
+
+
+That's it :)
+
+There are three example detection modules that discribe the use of the
+framework. The first and the second ones are modules that use timebased
+traffic analysis. The first one works with per-record tests.
+
+
+Feel free to mail any questions, bugs or feature wishes to
+
+braunl@informatik.uni-tuebingen.de
+
+
+Cheers,
+	Lothar

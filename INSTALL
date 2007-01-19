@@ -1,0 +1,41 @@
+Dependencies:
+
+- cmake (tested with version 2.2-patch3 and 2.4.1-beta)
+  you can download cmake at http://www.cmake.org/HTML/Download.html
+- libxml2 >= 2.6.0
+- blas
+- gsl
+- xmlblaster (http://xmlblaster.org) (you need at least the client-c-api)
+
+You need cmake (http://www.cmake.org) for building the system. Install the
+packet and start cmake:
+
+$ cmake .
+
+This should create all the necessary Makefiles for you. You'll need a working
+xmlBlaster installation to compile the sources.
+
+Then go and compile the packet:
+
+$ make
+
+Options for cmake:
+
+- You can disable IDMEF support via:
+
+$ cmake -DIDMEF=OFF .
+
+- You can set the path to your xmlBlaster installation by unsing the
+  XML_BLASTER_HOME variable:
+
+$ cmake -DXML_BLASTER_HOME=/path/to/your/xmlBlaster/
+
+If cmake fails (and you don't know why), please try the following steps:
+
+1.) delete CMakeCache.txt and rerun cmake.
+2.) If the problem still exists, please send cmake's output and the file
+    CMakeFiles/CMakeError.log to <braunl@informatik.uni-tuebingen.de> and i'll
+    have a look at it.
+
+
+Have fun :)

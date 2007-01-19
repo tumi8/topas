@@ -1,0 +1,1 @@
+- Run doxygen in the root directory to create the documentation
