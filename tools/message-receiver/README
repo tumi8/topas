@@ -1,0 +1,11 @@
+
+MessageReceiver
+----------------
+
+1.) Start xmlBlaster server
+
+2.) set XMLBLASTER environment variable to /path/to/xmlBlaster
+
+2.) ./compile.sh
+
+3.) ./startReceiver.sh hostname topic
