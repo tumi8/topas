@@ -160,137 +160,169 @@ guint32 pcapwriter::finalize_crc32c(guint32 crc32)
  */
 void pcapwriter::writepacket (PcapPacket* packet)
 {
-	++packets_read;	
-	int length = 0;
-    int proto_length = 0;
+    ++packets_read;	
+    int length = 0;
     int ip_length = 0;
     int eth_trailer_length = 0;
-    int i, padding_length;
+    int written_ip_octets = 0;
+    int padding_length;
     guint32 u;
     struct pcaprec_hdr ph;
 
-  
-        /* Write the packet */
-	curr_offset=0;
-        /* Compute packet length */
-      
-      if (packet->iphps_size == 0) {
-	      if (packet->ippps_size == 0) {
-		if (packet->hdr_udp) { length += sizeof(packet->HDR_UDP); proto_length = length; }
-		if (packet->hdr_tcp) { length += sizeof(packet->HDR_TCP); proto_length = length; }
-	      } else length += packet->ippps_size;
-	      
-		length += sizeof(packet->HDR_IP); 
-		ip_length = length;
-	      } else length += packet->iphps_size;
-		
-		
-	    length += sizeof(packet->HDR_ETHERNET);
-	    if (length < 60) {
-			eth_trailer_length = 60 - length;
-			length = 60;
-	    }
-			
-		/* Write PCap header */
-		ph.ts_sec = packet->ts_sec;
-		ph.ts_usec = packet->ts_usec;
-		if (packet->ts_fmt == NULL) { packet->ts_usec++; }      /* fake packet counter */
-		ph.incl_len = length;
-		ph.orig_len = length;
-		fwrite(&ph, sizeof(ph), 1, output_file);
-	
-		/* Write Ethernet header */
-		   packet->HDR_ETHERNET.l3pid = g_htons(2048);
-		   fwrite(&packet->HDR_ETHERNET, sizeof(packet->HDR_ETHERNET), 1, output_file);
-				
-		
-		if (packet->iphps_size == 0){
-			
-		/* Write IP header */
-		//if (packet->hdr_ip) {
-		    packet->HDR_IP.packet_length = g_htons(ip_length);
-		    // packet->HDR_IP.protocol = (guint8) packet->hdr_ip_proto;
-		    if (calc_iphcs && (packet->HDR_IP.hdr_checksum == 0) ){
-			packet->HDR_IP.hdr_checksum = 0;
-			packet->HDR_IP.hdr_checksum = in_checksum(&packet->HDR_IP, sizeof(packet->HDR_IP));
-		    }
-		fwrite(&packet->HDR_IP, sizeof(packet->HDR_IP), 1, output_file);
-		//}
-		
-		
-		if (packet->ippps_size == 0){
-			
+    
+    /* Compute packet length */
+    if (packet->HDR_IP.packet_length != 0) {
+	ip_length = length = g_ntohs(packet->HDR_IP.packet_length);
+    } else if (packet->iphps_size > 0) 
+	ip_length = length = packet->iphps_size;
+    else {
+	if (packet->ippps_size == 0) {
+	    if (packet->hdr_udp)
+	        length = sizeof(packet->HDR_UDP);
+	    if (packet->hdr_tcp) 
+		length = sizeof(packet->HDR_TCP);
+	} else length = packet->ippps_size;
 
-		/* Write UDP header */
-		if (packet->hdr_udp) {
-		    packet->HDR_UDP.source_port = packet->hdr_src_port;
-		    packet->HDR_UDP.dest_port = packet->hdr_dest_port;
-		    packet->HDR_UDP.length = g_htons(proto_length);
-		    
-		    if (calc_thcs && (packet->HDR_UDP.checksum == 0)){
-		    /* initialize pseudo header for checksum calculation */
-			pseudoh.src_addr    = packet->HDR_IP.src_addr;
-			pseudoh.dest_addr   = packet->HDR_IP.dest_addr;
-			pseudoh.zero        = 0;
-			pseudoh.protocol    = packet->HDR_IP.protocol;
-			pseudoh.length      = g_htons(proto_length);
-			
-			packet->HDR_UDP.checksum = 0;
-			u = g_ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
-			    g_ntohs(in_checksum(&packet->HDR_UDP, sizeof(packet->HDR_UDP))) +
-			    g_ntohs(in_checksum(packet_buf, curr_offset));
-		    
-			    packet->HDR_UDP.checksum = g_htons((u & 0xffff) + (u>>16));
-			    if (packet->HDR_UDP.checksum == 0) /* differenciate between 'none' and 0 */
-			    packet->HDR_UDP.checksum = g_htons(1);
-		    }
-		    fwrite(&packet->HDR_UDP, sizeof(packet->HDR_UDP), 1, output_file);
-		}
-		
-			
-		/* Write TCP header */
-		if (packet->hdr_tcp) {
-			//packet->HDR_TCP.source_port = g_htons(packet->hdr_src_port);
-			//packet->HDR_TCP.dest_port = g_htons(packet->hdr_dest_port);
-			packet->HDR_TCP.source_port = packet->hdr_src_port;
-                        packet->HDR_TCP.dest_port = packet->hdr_dest_port;
-			if (calc_thcs && (packet->HDR_TCP.checksum == 0)){
-				
-				/* initialize pseudo header for checksum calculation */
-				pseudoh.src_addr    = packet->HDR_IP.src_addr;
-				pseudoh.dest_addr   = packet->HDR_IP.dest_addr;
-				pseudoh.zero        = 0;
-				pseudoh.protocol    = packet->HDR_IP.protocol;
-				pseudoh.length      = g_htons(proto_length);
-				
-				packet->HDR_TCP.checksum = 0;
-				u = g_ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
-				g_ntohs(in_checksum(&packet->HDR_TCP, sizeof(packet->HDR_TCP))) +
-				g_ntohs(in_checksum(packet_buf, curr_offset));
-				packet->HDR_TCP.checksum = g_htons((u & 0xffff) + (u>>16));
-				if (packet->HDR_TCP.checksum == 0) /* differenciate between 'none' and 0 */
-				packet->HDR_TCP.checksum = g_htons(1);
-			}
-		fwrite(&packet->HDR_TCP, sizeof(packet->HDR_TCP), 1, output_file);
-		}
-	fwrite(packet_buf, curr_offset, 1, output_file);
-		}
-		
-		else fwrite(packet->ippps_p,packet->ippps_size, 1, output_file);
+	length += sizeof(packet->HDR_IP); 
+	ip_length = length;
+	packet->HDR_IP.packet_length = g_htons(length);
+    }
+
+    length += sizeof(packet->HDR_ETHERNET);
+    if (length < 60) {
+	eth_trailer_length = 60 - length;
+	length = 60;
+    }
+
+    /* Write PCap header */
+    ph.ts_sec = packet->ts_sec;
+    ph.ts_usec = packet->ts_usec;
+    if (packet->ts_fmt == NULL) { packet->ts_usec++; }      /* fake packet counter */
+    ph.incl_len = length;
+    ph.orig_len = length;
+    fwrite(&ph, sizeof(ph), 1, output_file);
+
+    /* Write Ethernet header */
+    packet->HDR_ETHERNET.l3pid = g_htons(2048);
+    fwrite(&packet->HDR_ETHERNET, sizeof(packet->HDR_ETHERNET), 1, output_file);
+
+    /* Write the packet
+     * if ipHeaderPacketSection (iphps) is present:
+     =   write iphps data + additional padding (if indicated by totalLengthIPv4)
+     * if ipPayloadPacketSection (ippps) is present:
+     *   write assembled IP header + ippps data + additional padding (if indicated by totalLengthIPv4)
+     * else
+     *   write assembled IP header + assembled UDP/TCP header + additional padding (if indicated by totalLengthIPv4)
+     */
+
+    if (packet->iphps_size == 0){
+
+	/* Write IP header */
+	if (calc_iphcs && (packet->HDR_IP.hdr_checksum == 0) ){
+	    packet->HDR_IP.hdr_checksum = 0;
+	    packet->HDR_IP.hdr_checksum = in_checksum(&packet->HDR_IP, sizeof(packet->HDR_IP));
 	}
-	else fwrite(packet->iphps_p,packet->iphps_size, 1, output_file);
+	fwrite(&packet->HDR_IP, sizeof(packet->HDR_IP), 1, output_file);
+	written_ip_octets += sizeof(packet->HDR_IP);
 
-        /* Write Ethernet trailer */
-		if (eth_trailer_length > 0 ) {
-		memset(tempbuf, 0, eth_trailer_length);
-            fwrite(tempbuf, eth_trailer_length, 1, output_file);
-        }
-     fflush(output_file);
-        ++packets_written;
+	if (packet->ippps_size == 0){
+
+	    /* Get transport header type, if not given */
+	    if (!(packet->hdr_udp | packet->hdr_tcp)) {
+		if (packet->HDR_IP.protocol == 6)
+		    packet->hdr_tcp = true;
+	        else if (packet->HDR_IP.protocol == 17)
+		    packet->hdr_udp = true;
+	    }
+		
+	    /* Write UDP header */
+	    if (packet->hdr_udp) {
+		packet->HDR_UDP.source_port = packet->hdr_src_port;
+		packet->HDR_UDP.dest_port = packet->hdr_dest_port;
+		packet->HDR_UDP.length = g_htons(ip_length - written_ip_octets);
+
+		if (calc_thcs && (packet->HDR_UDP.checksum == 0)){
+		    /* initialize pseudo header for checksum calculation */
+		    pseudoh.src_addr    = packet->HDR_IP.src_addr;
+		    pseudoh.dest_addr   = packet->HDR_IP.dest_addr;
+		    pseudoh.zero        = 0;
+		    pseudoh.protocol    = packet->HDR_IP.protocol;
+		    pseudoh.length      = packet->HDR_UDP.length;
+
+		    packet->HDR_UDP.checksum = 0;
+		    u = g_ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
+			g_ntohs(in_checksum(&packet->HDR_UDP, sizeof(packet->HDR_UDP)));
+			//  + g_ntohs(in_checksum(packet_buf, curr_offset));
+		    packet->HDR_UDP.checksum = g_htons((u & 0xffff) + (u>>16));
+		    if (packet->HDR_UDP.checksum == 0) /* differenciate between 'none' and 0 */
+			packet->HDR_UDP.checksum = g_htons(1);
+		}
+		fwrite(&packet->HDR_UDP, sizeof(packet->HDR_UDP), 1, output_file);
+		written_ip_octets += sizeof(packet->HDR_UDP);
+	    }
+
+
+	    /* Write TCP header */
+	    else if (packet->hdr_tcp) {
+		packet->HDR_TCP.source_port = packet->hdr_src_port;
+		packet->HDR_TCP.dest_port = packet->hdr_dest_port;
+		if (calc_thcs && (packet->HDR_TCP.checksum == 0)){
+
+		    /* initialize pseudo header for checksum calculation */
+		    pseudoh.src_addr    = packet->HDR_IP.src_addr;
+		    pseudoh.dest_addr   = packet->HDR_IP.dest_addr;
+		    pseudoh.zero        = 0;
+		    pseudoh.protocol    = packet->HDR_IP.protocol;
+		    pseudoh.length      = g_htons(ip_length - written_ip_octets);
+
+		    packet->HDR_TCP.checksum = 0;
+		    u = g_ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
+			g_ntohs(in_checksum(&packet->HDR_TCP, sizeof(packet->HDR_TCP)));
+			// g_ntohs(in_checksum(packet_buf, curr_offset));
+		    packet->HDR_TCP.checksum = g_htons((u & 0xffff) + (u>>16));
+		    if (packet->HDR_TCP.checksum == 0) /* differenciate between 'none' and 0 */
+			packet->HDR_TCP.checksum = g_htons(1);
+		}
+		fwrite(&packet->HDR_TCP, sizeof(packet->HDR_TCP), 1, output_file);
+		written_ip_octets += sizeof(packet->HDR_TCP);
+	    }
+	    //fwrite(packet_buf, curr_offset, 1, output_file);
+	}
+
+	else {
+	   fwrite(packet->ippps_p,packet->ippps_size, 1, output_file);
+	   written_ip_octets += packet->ippps_size;
+	}
+    }
+    else {
+	fwrite(packet->iphps_p,packet->iphps_size, 1, output_file);
+	written_ip_octets += packet->iphps_size;
+    }
+
+    /* Add padding */
+    padding_length = ip_length - written_ip_octets;
+    while(padding_length > 0) {
+	if (sizeof(padding) < padding_length) {
+	    fwrite(padding, sizeof(padding), 1, output_file);
+	    padding_length -= sizeof(padding);
+	} else {
+	    fwrite(padding, padding_length, 1, output_file);
+	    padding_length -= padding_length;
+	}
+    }
+
+    /* Write Ethernet trailer */
+    if (eth_trailer_length > 0 ) {
+	memset(tempbuf, 0, eth_trailer_length);
+	fwrite(tempbuf, eth_trailer_length, 1, output_file);
+    }
+    fflush(output_file);
+    ++packets_written;
 
 }
 
-pcapwriter::pcapwriter() : pcap_link_type(1),packets_read(0),packets_written(0),output_file(NULL),curr_offset(0){
+pcapwriter::pcapwriter() : pcap_link_type(1),packets_read(0),packets_written(0),output_file(NULL){
+    memset(padding, 0, sizeof(padding));
 }
 
 void pcapwriter::init(FILE *output, bool b1, bool b2){

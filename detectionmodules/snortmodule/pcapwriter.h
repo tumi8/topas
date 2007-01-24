@@ -25,7 +25,7 @@
 #include <stdio.h>
 
 #define PCAP_MAGIC 0xa1b2c3d4 ///< Special PCAP_MAGIC to show what file format we are using
-#define MAX_PACKET 64000
+#define PADDING 2048
 
 /**\brief Does all the logic, calculate checksums and write the packet into the fifo
  *
@@ -65,8 +65,7 @@ private:
 	
 	
 	char tempbuf[64];
-	unsigned char packet_buf[MAX_PACKET];;
-	unsigned long curr_offset;
+	unsigned char padding[PADDING];
 
 	guint16 in_checksum (void *buf, unsigned long count);
 
