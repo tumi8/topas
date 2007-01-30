@@ -54,6 +54,9 @@ manager::manager(DetectModExporter* exporter)
 		    "Crashing detection modules won't be detected");
         }
 
+        // TODO: remove this after Raimondas merged his topas-dynamic-control into trunk/topas
+        topasID = "this_is_a_dummy_id_please_remove_me";
+
 	mutex.lock();
 }
 
@@ -81,6 +84,9 @@ void manager::addDetectionModule(const std::string& modulePath, const std::vecto
 void manager::startModules()
 {
 #ifdef IDMEF_SUPPORT_ENABLED
+        if (topasID.empty()) {
+                throw std::runtime_error("TOPAS id is empty. Cannot start modules!");
+        }
         detectionModules.topasID = topasID;
 #endif
         detectionModules.startModules(exporter);

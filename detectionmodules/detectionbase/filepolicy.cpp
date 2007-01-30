@@ -48,8 +48,6 @@ SemShmNotifier::SemShmNotifier()
 	
 	std::cin >> packetDir;
 
-	std::cout << "\"" << packetDir << "\"" << std::endl;
-
         if (-1 == (semId = semget(semKey, 0, 0))) {
                 std::cerr << "Could not open semaphore:" << strerror(errno) << std::endl;
                 throw std::runtime_error("Could not open semaphore");

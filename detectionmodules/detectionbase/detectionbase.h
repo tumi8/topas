@@ -167,7 +167,6 @@ class DetectionBase
                 }
 
                 std::cin >> topasID;
-
 #endif // IDMEF_SUPPORT_ENABLED
         }
         
