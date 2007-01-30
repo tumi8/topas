@@ -1,0 +1,8 @@
+- DetectionBase::~DetectionBase wird nicht aufgerufen
+- DetectionBase::restart(), DetctionBase::stop() muss implementiert werden
+- Collector muss IDMEF-ID erzeugen und an die Module senden
+- Collector muss Module stopen und starten können
+- Collector benötigt eine Schnittstelle zum XML-Blaster
+- Collector: - statusabfrage der laufenden Module
+             - Abfrage der List der vorhandenen Module
+             - Auslesen der default Module-Konfiguration
