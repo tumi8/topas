@@ -166,6 +166,8 @@ class DetectionBase
 			}                                    
                 }
 
+                std::cin >> topasID;
+
 #endif // IDMEF_SUPPORT_ENABLED
         }
         
@@ -393,7 +395,7 @@ class DetectionBase
 		/* send <Heartbeat> message to all xmlBlaster sites and subscribe for update messages */
 		currentMessage = new IdmefMessage(analyzerName, analyzerId, classification, IdmefMessage::HEARTBEAT);
 		/* need to get TOPAS ID somehow */
-		sendIdmefMessage("topas", *currentMessage);
+		sendIdmefMessage(topasID, *currentMessage);
 		for (unsigned i = 0; i != commObjs.size(); ++i) {
 			commObjs[i]->subscribe(analyzerName + "-" + analyzerId, XmlBlasterCommObject::MESSAGE);
 		}
@@ -433,6 +435,7 @@ class DetectionBase
 #ifdef IDMEF_SUPPORT_ENABLED
         IdmefMessage* currentMessage;
         std::string analyzerName, analyzerId, classification;
+        std::string topasID;
         std::vector<XmlBlasterCommObject*> commObjs;
         std::vector<GlobalRef> xmlBlasters;
 #endif

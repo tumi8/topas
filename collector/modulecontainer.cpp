@@ -72,7 +72,11 @@ void ModuleContainer::startModules(DetectModExporter* exporter)
 		    detectionModules[i]->getFileName().c_str());
                 exporter->installNotification(*detectionModules[i]);
                 detectionModules[i]->run();
+#ifdef IDMEF_SUPPORT_ENABLED
+                exporter->sendInitData(*detectionModules[i], topasID);
+#else
                 exporter->sendInitData(*detectionModules[i]);
+#endif
         }
 }
 

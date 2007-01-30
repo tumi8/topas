@@ -98,6 +98,10 @@ public:
 	 */
 	void notifyAll(DetectModExporter* exporter);
 
+#ifdef IDMEF_SUPPORT_ENABLED
+        std::string topasID;
+#endif
+
 private:
         std::vector<DetectMod*> detectionModules;
 };

@@ -80,6 +80,9 @@ void manager::addDetectionModule(const std::string& modulePath, const std::vecto
 
 void manager::startModules()
 {
+#ifdef IDMEF_SUPPORT_ENABLED
+        detectionModules.topasID = topasID;
+#endif
         detectionModules.startModules(exporter);
 }
 

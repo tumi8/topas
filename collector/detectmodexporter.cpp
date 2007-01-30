@@ -149,14 +149,13 @@ void DetectModExporter::clearSink()
 }
 
 
-void DetectModExporter::sendInitData(const DetectMod& detectMod)
+void DetectModExporter::sendInitData(const DetectMod& detectMod, const std::string& additionalData)
 {
         /* send semaphore key, shared memory key and packetdir to the detection module*/
         /* TODO: implement timeout (if we don't, we will hang if the detection module doesn't read from its pipe) */
         std::string tmp;
         std::stringstream ss;
         ss << detectMod.getSemKey() << " " << detectMod.getShmKey() << " ";
-	// TODO: remove this testing work around!
 	if (exchangeStyle == USE_FILES) {
 		ss << "USE_FILES ";
 	} else {
@@ -170,6 +169,10 @@ void DetectModExporter::sendInitData(const DetectMod& detectMod)
         */
         tmp = (packetDir.empty()?"dummy_string":packetDir) + "\n";
         write(detectMod.getPipeFd(), tmp.c_str(), tmp.size());
+        if (!additionalData.empty()) {
+                tmp = additionalData + "\n";
+                write(detectMod.getPipeFd(), tmp.c_str(), tmp.size());
+        }
 }
 
 void DetectModExporter::setPacketDir(const std::string& dir)

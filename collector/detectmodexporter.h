@@ -99,7 +99,7 @@ public:
 	 * Sends the information about semaphores and the shared memory
 	 * object to all modules.
 	 */
-        void sendInitData(const DetectMod&);
+        void sendInitData(const DetectMod&, const std::string& additionalData = "");
 
         /* all files in this directory will be deleted */
         void setPacketDir(const std::string&);
