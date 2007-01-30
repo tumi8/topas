@@ -273,7 +273,7 @@ private:
 	/**
 	 * Return NTP Timestamp
 	 */
-	std::string IdmefMessage::getNtpStamp();
+	std::string getNtpStamp();
 
         /**
          * Initialisation function
