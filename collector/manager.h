@@ -126,6 +126,11 @@ protected:
         
         /** @c collector */
         friend class collector;
+
+#ifdef IDMEF_SUPPORT_ENABLED
+        /** TOPAS id for XMLBlaster */
+        std::string topasID;
+#endif
 };
 
 

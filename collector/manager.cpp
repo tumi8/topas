@@ -146,8 +146,10 @@ void* manager::run(void* data)
 		alarm(man->killTime);
 		detectionModules.notifyAll(exporter);
 		exporter->clearSink();
-		//man->exporter->notifyAll(detectionModules);
 		alarm(0);
+                
+                // TODO: check and handle XML-Blaster messages
+
 	}
         return NULL;
 }
