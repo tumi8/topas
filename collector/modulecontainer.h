@@ -63,7 +63,7 @@ public:
          * Restart module with given pid
          * @param pid Pid of crashed module
          */
-        void restartCrashedModule(pid_t pid);
+        void restartCrashedModule(pid_t pid, DetectModExporter* exporter);
 
         /**
          * Removes detection module with pid pid from the list of stored and managed detectio modules

@@ -85,8 +85,10 @@ public:
 
         /**
 	 * Blocks until the module processed its data.
+         * @param module Module to wait for
+         * @return 0 on success, -1 on error
 	 */
-	void wait(DetectMod* module);
+	int wait(DetectMod* module);
 
 	/**
 	 * Performes necessary work before a module can be notfied.

@@ -35,6 +35,7 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <unistd.h>
+#include <time.h>
 
 
 #include <string>
@@ -102,14 +103,17 @@ void DetectModExporter::notify(DetectMod* module)
 	semaphore.sem_op = 2;
 	semaphore.sem_flg = 0;
 	if (-1 == semop(module->getSemId(), &semaphore, 1)) {
-		msg(MSG_ERROR, "Manager: Error setting semaphore: %s\nThis could be responsible for killing %s in the future",
+		msg(MSG_ERROR, "Manager: Error setting semaphore: %s\n"
+                    "This could be responsible for killing %s in the future",
 		    strerror(errno), module->getFileName().c_str());
 	}
 }
  
-void DetectModExporter::wait(DetectMod* module)
+int DetectModExporter::wait(DetectMod* module)
 {
         static struct sembuf semaphore;
+        static struct timespec t;
+        static bool wait;
         /*
           loop through all detection modules and wait for them to decrement their semaphores.
           if the detection modules aren't able to parse the packets within killTime seconds
@@ -118,10 +122,25 @@ void DetectModExporter::wait(DetectMod* module)
 	semaphore.sem_num = 0;
 	semaphore.sem_op = 0;
 	semaphore.sem_flg = 0;
-	if (-1 == semop(module->getSemId(), &semaphore, 1)) {
-		msg(MSG_ERROR, "Manager: Error setting semaphore: %s\nThis could be responsible for killing %s in the future",
-		    strerror(errno), module->getFileName().c_str());
+        t.tv_sec = 0;
+        t.tv_nsec = 10000;
+        wait = true;
+        while (wait) { 
+        	if (-1 == semtimedop(module->getSemId(), &semaphore, 1, &t)) {
+                        if (errno == EAGAIN && module->getState() == DetectMod::Running) {
+                               continue; 
+                        }
+
+        		msg(MSG_ERROR, "Manager: Error setting semaphore: %s\n"
+                            "This could be responsible for killing %s in the future",
+                	    strerror(errno), module->getFileName().c_str());
+                        return -1;
+                } else
+                        wait = false;
+                
 	}
+
+        return 0;
 }
 
 void DetectModExporter::clearSink()

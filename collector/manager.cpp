@@ -127,7 +127,7 @@ void manager::sigChild(int sig)
         
         if (restartOnCrash) {
                 msg(MSG_INFO, "Manager: Restarting crashed module");
-                detectionModules.restartCrashedModule(pid);
+                detectionModules.restartCrashedModule(pid, exporter);
         } else {
                 msg(MSG_INFO, "Manager: Not restarting crashed module");
                 detectionModules.deleteModule(pid);

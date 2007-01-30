@@ -46,12 +46,13 @@ void ModuleContainer::killDetectionModules()
 
 
 
-void ModuleContainer::restartCrashedModule(pid_t pid)
+void ModuleContainer::restartCrashedModule(pid_t pid, DetectModExporter* exporter)
 {
         for (std::vector<DetectMod*>::iterator i = detectionModules.begin();
 	     i != detectionModules.end(); ++i) {
                 if (pid == (*i)->getPid()) {
                         (*i)->restartCrashed();
+                        exporter->sendInitData(*(*i));
                         return;
                 }
         }
@@ -106,6 +107,8 @@ void ModuleContainer::notifyAll(DetectModExporter* exporter)
 	/* wait for them to finish data processing */
 	for (std::vector<DetectMod*>::iterator i = detectionModules.begin();
 	     i != detectionModules.end(); ++i) {
-		exporter->wait(*i);
+		if (-1 == exporter->wait(*i)) {
+                        
+                }
 	}
 }

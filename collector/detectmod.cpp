@@ -141,6 +141,8 @@ void DetectMod::restartCrashed()
 {
         if (-1 == semctl(semId,0,IPC_RMID,NULL)) {
                 msg(MSG_ERROR, "DetectMod: Error deleting semaphore to %s: %s", filename.c_str(), strerror(errno));
+        } else {
+                msg(MSG_INFO, "DetectMod: Successfully removed semaphore");
         }
         run();
 }
