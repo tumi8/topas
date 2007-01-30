@@ -57,7 +57,6 @@ public:
 	 */
 	
 	void test(SnortStore*);
-	
 
 	/**\brief Used to setup the fifos, init the writer, start the external detection modul and send inital file headers
 	 *
@@ -69,6 +68,16 @@ public:
 	 */
 
 	void readConfig(const std::string& filename);
+
+#ifdef IDMEF_SUPPORT_ENABLED
+	/** 
+         * Update function. This function will be called, whenever a message
+         * for subscribed key is received from xmlBlaster.
+         * @param xmlObj Pointer to data structure, containing xml data
+         *               You have to delete the memory allocated for the object.
+         */
+  	void update(XMLConfObj* xmlObj);
+#endif
 	
 	/**\brief Should handle the CleanExit whenever a signal is caught
 	 *

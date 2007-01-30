@@ -40,6 +40,11 @@ void ExampleModule::init()
         /* we want to receive all destination ip address fields */
         subscribeTypeId(IPFIX_TYPEID_destinationIPv4Address);
 
+#ifdef IDMEF_SUPPORT_ENABLED
+	/* register module */
+	registerModule("first");
+#endif
+
         /* set alarm time to 10 second.
            That means: The test() methode will be called ten second after
                        the last test()-run ended
@@ -56,6 +61,22 @@ ExampleModule::~ExampleModule()
         
 }
 
+#ifdef IDMEF_SUPPORT_ENABLED
+void ExampleModule::update(XMLConfObj* xmlObj)
+{
+	std::cout << "Update received!" << std::endl;
+	if (xmlObj->nodeExists("stop")) {
+		std::cout << "-> stoping module..." << std::endl;
+	} else if (xmlObj->nodeExists("restart")) {
+		std::cout << "-> restarting module..." << std::endl;
+	} else if (xmlObj->nodeExists("config")) {
+		std::cout << "-> updating module configuration..." << std::endl;
+	} else { // add your commands here
+		std::cout << "-> unknown operation" << std::endl;
+	}
+	delete xmlObj;
+}
+#endif
 
 void ExampleModule::test(ExampleDataStorage* store) 
 {

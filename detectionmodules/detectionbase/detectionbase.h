@@ -20,11 +20,6 @@
 #ifndef _DETECTION_BASE_H_
 #define _DETECTION_BASE_H_
 
-/**
- * @author Lothar Braun <braunl@informatik.uni-tuebingen.de>
- */
-
-
 #include "filepolicy.h"
 
 
@@ -107,9 +102,9 @@ class DetectionBase
                         std::cerr << "Could not install signal handler for SIGALARM: " << strerror(errno) << std::endl;
                         throw std::runtime_error("Could not install signal handler for SIGALARM");
                 }
-                /* parse confiuration file to get all xmlBlasters and their properties */
-                confObj = new XMLConfObj(configFile);
+		confObj = new XMLConfObj(configFile, XMLConfObj::XML_FILE);
 #ifdef IDMEF_SUPPORT_ENABLED
+                /* parse confiuration file to get all xmlBlasters and their properties */
                 if (confObj->nodeExists("xmlBlasters")) {
 			confObj->enterNode("xmlBlasters");
 			if (confObj->nodeExists("xmlBlaster")) {
@@ -141,6 +136,9 @@ class DetectionBase
  					/* global configuration for each xmlBlaster connection */
 					std::string instanceName = "connection-" + ++count;
 					GlobalRef globalRef =  Global::getInstance().createInstance(instanceName, &propMap);
+					/* get module id here */
+					analyzerId = globalRef.getElement()->getInstanceId();
+					analyzerId = std::string(analyzerId.begin() + analyzerId.find_last_of("/") + 1, analyzerId.end());
 					xmlBlasters.push_back(globalRef);
  					confObj->leaveNode();
 				}
@@ -262,7 +260,7 @@ class DetectionBase
         }
 
         /**
-         * Creates a new Message using the parameters specified on earlyer call to
+         * Creates a new Message using the parameters specified on earlier call to
          * getNewIdmefMessage(const std::string& analyzerName, const std::string& classification)
          * or empty strings if getNewIdmefMessage(const std::string& analyzerName, const std::string& classification)
          * was not called before.
@@ -271,7 +269,7 @@ class DetectionBase
         IdmefMessage& getNewIdmefMessage()
         {
                 delete currentMessage;
-                currentMessage = new IdmefMessage(analyzerName, classification);
+                currentMessage = new IdmefMessage(analyzerName, analyzerId, classification, IdmefMessage::ALERT);
                 return *currentMessage;
         
         }
@@ -317,6 +315,7 @@ class DetectionBase
         {
                 sendIdmefMessage(topic, *currentMessage);
         }
+
 #endif //IDMEF_SUPPORT_ENABLED
 
  protected:
@@ -335,13 +334,36 @@ class DetectionBase
 			while(dbase->getAlarmTime() > 0) {
 				alarm(dbase->getAlarmTime());
 				dbase->testMutex.lock();
+#ifdef IDMEF_SUPPORT_ENABLED
+ 				for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
+					std::string ret = dbase->commObjs[i]->getUpdateMessage();
+					if (ret != "") {
+						XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
+						if (NULL != confObj) {
+							dbase->update(confObj);
+						}
+					}
+ 				}				
+#endif
 				// get received data into the user data struct 
 				dbase->test(inputPolicy.getStorage());
 			}
 			while(dbase->getAlarmTime() == 0) {
 				DataStorage* d = inputPolicy.getStorage();
-				if (d->isValid())
+				if (d->isValid()) {
+#ifdef IDMEF_SUPPORT_ENABLED
+ 				for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
+					std::string ret = dbase->commObjs[i]->getUpdateMessage();
+					if (ret != "") {
+						XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
+						if (NULL != confObj) {
+							dbase->update(confObj);
+						}
+					}
+ 				}				
+#endif
 					dbase->test(d);
+				}
 			}
 		}
                 
@@ -354,9 +376,49 @@ class DetectionBase
          * _NEVER_ CALL THIS FUNCTION BY HAND IN AN DERIVED CLASS
          * @param ds Pointer to data structure, containing all data collected since last call
          *           to test(). 
-         *           You have to delete the memeoty allocated for the object.
+         *           You have to delete the memory allocated for the object.
          */
         virtual void test(DataStorage* ds) = 0;
+	
+#ifdef IDMEF_SUPPORT_ENABLED
+	
+	/** 
+         * Register function. This function should be called 
+	 * in the init() function of each detection module.
+         * It registers the module and subscribes for update messages.
+         * @param analyzerName Name of the detection module.
+         */
+	void registerModule(const std::string& analyzerName)
+	{
+		/* send <Heartbeat> message to all xmlBlaster sites and subscribe for update messages */
+		currentMessage = new IdmefMessage(analyzerName, analyzerId, classification, IdmefMessage::HEARTBEAT);
+		/* need to get TOPAS ID somehow */
+		sendIdmefMessage("topas", *currentMessage);
+		for (unsigned i = 0; i != commObjs.size(); ++i) {
+			commObjs[i]->subscribe(analyzerName + "-" + analyzerId, XmlBlasterCommObject::MESSAGE);
+		}
+	}
+
+	/**
+	 * Restarts the module.
+	 */
+	void restart();
+
+	/**
+	 * Stops the module.
+	 */
+	void stop();
+
+	/** 
+         * Update function. This function will be called, whenever a message
+         * for subscribed key is received from xmlBlaster.
+         * _NEVER_ CALL THIS FUNCTION BY HAND IN AN DERIVED CLASS
+         * @param xmlObj Pointer to data structure, containing xml data
+         *               You have to delete the memory allocated for the object.
+         */
+	virtual void update(XMLConfObj* xmlObj) = 0;
+
+#endif
 
 
  private:
@@ -370,7 +432,7 @@ class DetectionBase
 	static Mutex testMutex;
 #ifdef IDMEF_SUPPORT_ENABLED
         IdmefMessage* currentMessage;
-        std::string analyzerName, classification;
+        std::string analyzerName, analyzerId, classification;
         std::vector<XmlBlasterCommObject*> commObjs;
         std::vector<GlobalRef> xmlBlasters;
 #endif
@@ -398,6 +460,7 @@ class DetectionBase
         {
 		testMutex.unlock();
         }
+
 };
 
 

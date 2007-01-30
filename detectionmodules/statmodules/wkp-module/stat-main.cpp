@@ -151,6 +151,11 @@ void Stat::init(const std::string & configfile) {
   ConfObj * config;
   config = new ConfObj(configfile);
 
+#ifdef IDMEF_SUPPORT_ENABLED
+	/* register module */
+	registerModule("wkp-module");
+#endif
+
   // NB: the order of the following operations is important,
   // as some of these functions use Stat members initialized
   // by the preceding functions; so beware if you change the order
@@ -219,7 +224,22 @@ void Stat::init(const std::string & configfile) {
 
 }
 
-
+#ifdef IDMEF_SUPPORT_ENABLED
+void Stat::update(XMLConfObj* xmlObj)
+{
+	std::cout << "Update received!" << std::endl;
+	if (xmlObj->nodeExists("stop")) {
+		std::cout << "-> stoping module..." << std::endl;
+	} else if (xmlObj->nodeExists("restart")) {
+		std::cout << "-> restarting module..." << std::endl;
+	} else if (xmlObj->nodeExists("config")) {
+		std::cout << "-> updating module configuration..." << std::endl;
+	} else { // add your commands here
+		std::cout << "-> unknown operation" << std::endl;
+	}
+	delete xmlObj;
+}
+#endif
 
 // ================== FUNCTIONS USED BY init FUNCTION =================
 

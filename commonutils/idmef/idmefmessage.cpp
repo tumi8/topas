@@ -25,22 +25,31 @@
 #include <iostream>
 #include <sstream>
 
+#include <sys/time.h>
 #include <time.h>
 
-IdmefMessage::IdmefMessage(const std::string& analyzerName, const std::string& classification) 
+IdmefMessage::IdmefMessage(const std::string& analyzerName, const std::string& analyzerId,
+			   const std::string& classification, MessageType type) 
 {
         this->analyzerName = analyzerName;
+	this->analyzerId = analyzerId;
         this->classification = classification;
-        createIdmefBody();
-        initXmlParser();
+	if (type == ALERT) {
+		createAlertBody();
+	} else if (type == HEARTBEAT) {
+		createHeartbeatBody();
+	} else {
+		throw exceptions::XMLException("Unknown message type " + type);
+	}
+        init();
 }
 
 IdmefMessage::IdmefMessage()
 {
         this->analyzerName = "unknown-module";
         this->classification = "unknown";
-        createIdmefBody();
-        initXmlParser();
+        createAlertBody();
+        init();
 }
 
 IdmefMessage::~IdmefMessage()
@@ -50,33 +59,32 @@ IdmefMessage::~IdmefMessage()
         xmlCleanupParser();
 }
 
-void IdmefMessage::initXmlParser()
+void IdmefMessage::init()
 {
         /* parse the default IDMEF-Message */
         idmefTree = xmlReadMemory(idmefMessage.c_str(), idmefMessage.size(), "noname.xml", NULL, 0);
         if (idmefTree == NULL) {
-                std::cerr << "Fatal: Error parsing default IDMEF-message!" << std::endl;
-                exit(-1);
+                throw exceptions::XMLException("Error parsing the default IDMEF-message!");
         }
 }
 
-void IdmefMessage::createIdmefBody()
+void IdmefMessage::createAlertBody()
 {
-        /* create default IDMEF-Message body */
+        /* create the default IDMEF-Message <Alert> body */
         idmefMessage =
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?> \n"
                 "<!DOCTYPE IDMEF-Message PUBLIC \"-//IETF//DTD RFC XXXX IDMEF v1.0//EN\" \"idmef-message.dtd\" \n"
                 "[<!ENTITY % x-diadem SYSTEM \"diadem.dtd\"> %x-diadem; ]>\n"
                 "<IDMEF-Message version=\"1.0\" xmlns=\"http://iana.org/idmef\">\n"
                 "<Alert messageid=\"0\">\n"
-                "<Analyzer name=\"" + analyzerName + "\"/>\n"
+                "<Analyzer name=\"" + analyzerName + "\" analyzerid=\"" + analyzerId + "\" "
+		"manufacturer=\"\" model=\"\" version=\"\" class=\"\" ostype=\"\" osversion=\"\"/>\n"
                 "<CreateTime ntpstamp=\"\"/>\n"
                 "<Source/>\n"
                 "<Target/>\n"
                 "<Classification text=\"" + classification  + "\"></Classification>\n"
                 "<Assessment/>\n"
-                "<AdditionalData type=\"xml\">"
-                "</AdditionalData>\n"
+                "<AdditionalData type=\"xml\"/>\n"
                 "</Alert>\n"
                 "</IDMEF-Message>";
 
@@ -86,6 +94,25 @@ void IdmefMessage::createIdmefBody()
         multipleNodes.push_back("DIADEM:ObservationPoint");
 	multipleNodes.push_back("Service");
 
+}
+
+void IdmefMessage::createHeartbeatBody()
+{
+        /* create the default IDMEF-Message <Heartbeat> body */
+        idmefMessage =
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?> \n"
+                "<!DOCTYPE IDMEF-Message PUBLIC \"-//IETF//DTD RFC XXXX IDMEF v1.0//EN\" \"idmef-message.dtd\" \n"
+                "[<!ENTITY % x-diadem SYSTEM \"diadem.dtd\"> %x-diadem; ]>\n"
+                "<IDMEF-Message version=\"1.0\" xmlns=\"http://iana.org/idmef\">\n"
+                "<Heartbeat messageid=\"0\">\n"
+                "<Analyzer name=\"" + analyzerName + "\" analyzerid=\"" + analyzerId + "\" "
+		"manufacturer=\"\" model=\"\" version=\"\" class=\"\" ostype=\"\" osversion=\"\"/>\n"
+                "<CreateTime ntpstamp=\"\"/>\n"
+		"<HeartbeatInterval/>\n"
+		"<AnalyzerTime ntpstamp=\"\"/>\n"
+		"<AdditionalData type=\"xml\"/>\n"
+		"</Heartbeat>\n"
+                "</IDMEF-Message>";
 }
 
 void IdmefMessage::setMessageId(int id)
@@ -150,6 +177,7 @@ void IdmefMessage::createCreateTimeNode()
         xmlNodePtr currNode = xmlDocGetRootElement(idmefTree);
         currNode = findIdmefNode(currNode, "CreateTime");
         setIdmefNodeContent(currNode, getLocalTime());
+	setIdmefNodeAttr(currNode, "CreateTime", "ntpstamp", getNtpStamp());
 }
 
 void IdmefMessage::createSourceNode(const std::string& spoofed, const std::string& category,
@@ -619,6 +647,16 @@ std::string IdmefMessage::getLocalTime()
         char tmp[30];
         strftime(tmp, 30, "%Y-%m-%dT%H:%M:%S%z", ptm);
         return std::string(tmp);
+}
+
+std::string IdmefMessage::getNtpStamp()
+{
+	/* NTP Timestamp, for example "0x12345678.0x87654321" */
+	std::stringstream ss;
+	timeval t;
+	gettimeofday(&t, 0);
+	ss << "0x" << t.tv_sec + OFFSET_1970 << ".0x" << (((uint64_t)t.tv_usec) << 32) / 1000000;  
+	return ss.str();
 }
 
 #endif //IDMEF_SUPPORT_ENABLED

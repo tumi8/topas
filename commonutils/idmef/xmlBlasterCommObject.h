@@ -22,6 +22,8 @@
 #include <client/XmlBlasterAccess.h>
 #include <util/Global.h>
 
+#include <commonutils/mutex.h>
+
 #include <string>
 #include <vector>
 
@@ -35,7 +37,9 @@ using namespace org::xmlBlaster::client::key;
 class XmlBlasterCommObject : public I_Callback,
 			     public I_ConnectionProblems
 {
-public: 
+public:
+	typedef enum { MESSAGE, XPATH } SubscriptionType;
+
 	XmlBlasterCommObject(Global& glob);
 	virtual ~XmlBlasterCommObject();
 
@@ -60,9 +64,9 @@ public:
 	/**
          * Subscribe key
 	 * @param key Topic or XPath expression
-	 * @param xpath "true" for XPath expression, "false" otherwise
+	 * @param subType Subscription type: MESSAGE or XPATH
          */	
-	void subscribe(const std::string& key, bool useXPath);
+	void subscribe(const std::string& key, SubscriptionType subType);
 
 	/**
          * Publish a message with the given topic
@@ -83,6 +87,12 @@ public:
 	std::string update(const std::string& sessionId, UpdateKey& updateKey,
 			   const unsigned char* content,
 			   long contentSize, UpdateQos& updateQos);
+	
+	/**
+	 * Returns content received through update callback if an update is available.
+	 * @return String Empty string or message content.
+	 */
+	std::string getUpdateMessage();
 
 private:
 	Global& global_;
@@ -90,6 +100,12 @@ private:
 	XmlBlasterAccess con;
 	/* The string identifying this class when logging */
 	std::string ME;
+	/* Update message content */
+	std::string updateMessage;
+	/* */
+	bool updateAvailable;
+	/* Mutex variable */
+	Mutex mutex;
 	/* The reference to the log object for this instance */
 	I_Log& log_;
 };

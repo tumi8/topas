@@ -66,7 +66,12 @@ Snortmodule::Snortmodule(const std::string& filename) : DetectionBase<SnortStore
 	
 	subscribeTypeId(313);//PSAMP_TYPEID_ipHeaderPacketSection 
 	subscribeTypeId(314);//PSAMP_TYPEID_ipPayloadPacketSection  
-	
+
+#ifdef IDMEF_SUPPORT_ENABLED
+	/* register module */
+	registerModule("snortmodule");
+#endif
+
 	// Sighandlers		
 	if (signal(SIGTERM, sigTerm) == SIG_ERR) {
                msg(MSG_ERROR, "Snortmodule: Couldn't install signal handler for SIGTERM.\n ");
@@ -186,6 +191,22 @@ void Snortmodule::CleanExit(){
 	exit(0);
 }
 
+#ifdef IDMEF_SUPPORT_ENABLED
+void Snortmodule::update(XMLConfObj* xmlObj)
+{
+	std::cout << "Update received!" << std::endl;
+	if (xmlObj->nodeExists("stop")) {
+		std::cout << "-> stoping module..." << std::endl;
+	} else if (xmlObj->nodeExists("restart")) {
+		std::cout << "-> restarting module..." << std::endl;
+	} else if (xmlObj->nodeExists("config")) {
+		std::cout << "-> updating module configuration..." << std::endl;
+	} else { // add your commands here
+		std::cout << "-> unknown operation" << std::endl;
+	}
+	delete xmlObj;
+}
+#endif
 
 void Snortmodule::readConfig(const std::string& filename)
 {

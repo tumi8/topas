@@ -23,7 +23,7 @@
 
 
 CollectorConfObj::CollectorConfObj(const std::string& file) 
-        : XMLConfObj(file)
+        : XMLConfObj(file, XML_FILE)
 {
         //checkConfig();
 }

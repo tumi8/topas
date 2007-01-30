@@ -37,11 +37,15 @@
  */
 class XMLConfObj {
 public:
+	
+	typedef enum { XML_FILE, XML_STRING } XmlType;
+
 	/**
-	 * Constructor reads and parses the given XML-File.
-	 * @param filename Associated XML-File
+	 * Constructor reads and parses the given XML-File or XML-String.
+	 * @param filename Associated XML-File or XML-String 
+	 * @param type XML_FILE or XML_STRING
 	 */
-	XMLConfObj(const std::string& filename);
+	XMLConfObj(const std::string& filename, XmlType sourceType);
 
 	/**
 	 * Destructor ...
@@ -111,6 +115,12 @@ public:
 	 */
 	std::string getAttribute(const std::string& nodeName, const std::string& attrName);
 
+	/**
+	 * Returns xml data as a string
+	 * @return String representation of xml data
+	 */
+	std::string toString();
+
 private:
 	xmlDocPtr documentTree;
 	xmlNodePtr currentLevel;
@@ -140,7 +150,7 @@ class ConfObj {
          * Constructor...
          * @param file XML-file which should be parsed.
          */
-        ConfObj(const std::string& file) : xmlObj(file) {}
+        ConfObj(const std::string& file) : xmlObj(file, XMLConfObj::XML_FILE) {}
 
         /**
          * Destructor....

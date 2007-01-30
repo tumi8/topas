@@ -26,7 +26,7 @@ XmlBlasterCommObject::XmlBlasterCommObject(Global& glob)
 	  global_(glob),
 	  con(glob),
 	  log_(glob.getLog())
-{                       
+{
 	log_.info(ME, "Trying to connect to xmlBlaster with C++ client lib " + Global::getReleaseId() +
 		  " from " + Global::getBuildTimestamp());
 }
@@ -41,7 +41,7 @@ void XmlBlasterCommObject::connect()
 	 * Used to initialize the failsafe behaviour of the client.
 	 * No failsafe behaviour implemented yet
 	 */
-	//con.initFailsafe(this);
+	con.initFailsafe(this);
 	/* Creates a connect qos where user and password fields ar empty  */
 	ConnectQos qos(global_, "", "");
 	log_.info(ME, "connecting to xmlBlaster...");
@@ -61,7 +61,7 @@ void XmlBlasterCommObject::disconnect()
 	log_.info(ME, "disconnected from xmlBlaster");
 };
 
-void XmlBlasterCommObject::subscribe(const std::string& key, bool useXPath)
+void XmlBlasterCommObject::subscribe(const std::string& key, SubscriptionType subType)
 {
 	/* Minimal constructor */
 	SubscribeKey subKey(global_);
@@ -69,10 +69,12 @@ void XmlBlasterCommObject::subscribe(const std::string& key, bool useXPath)
 	 * Subscribe key. By invoking setOid you implicitly choose the 'EXACT' mode.      
 	 * If you want to subscribe with XPATH use setQueryString instead 
 	 */
-	if (useXPath == true) {
+	if (subType == XPATH) {
 		subKey.setQueryString(key);
-	} else {
+	} else if (subType == MESSAGE) {
 		subKey.setOid(key);
+	} else {
+		log_.error(ME, "unknown subsription type: " + subType); 
 	}
 	SubscribeQos subQos(global_);                                                     
 	log_.info(ME, "subscribing to xmlBlaster with key: \"" + subKey.toXml() + "\"");
@@ -106,14 +108,28 @@ std::string XmlBlasterCommObject::update(const std::string& sessionId, UpdateKey
 					 const unsigned char* content,
 					 long contentSize, UpdateQos& updateQos)
 {
-	/* at the moment unused */
-	log_.warn(ME, "receiving undirected message");
+	mutex.lock();
+	updateMessage = std::string(reinterpret_cast<char *>(const_cast<unsigned char *>(content)), contentSize);
+	updateAvailable = true;
+	mutex.unlock();
 	return "";
 };
 
+std::string XmlBlasterCommObject::getUpdateMessage()
+{
+	mutex.lock();
+	std::string copy = "";
+	if (updateAvailable) {
+		copy = updateMessage;
+		updateAvailable = false;
+	}
+	mutex.unlock();
+	return copy;
+}
+
 bool XmlBlasterCommObject::reachedAlive(StatesEnum /*oldState*/, I_ConnectionsHandler* /*connectionsHandler*/)
 {
-	log_.info(ME, "reconnected");
+	log_.warn(ME, "reconnected");
 	return true;
 }
 
@@ -131,6 +147,5 @@ bool XmlBlasterCommObject::isConnected()
 {
 	return con.isAlive();
 }
-
 
 #endif //IDMEF_SUPPORT_ENABLED

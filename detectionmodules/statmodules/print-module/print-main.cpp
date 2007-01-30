@@ -48,6 +48,11 @@ void Print::init(const std::string & configfile) {
     exit(-1);
   }
 
+#ifdef IDMEF_SUPPORT_ENABLED
+  /* register module */
+  registerModule("print-module");
+#endif  
+
   // set alarm time to 0: the test() method will be called
   // as soon as a record is received ('real-time monitoring')
   // (a PrintStore object will then contain no more than one record)
@@ -70,6 +75,23 @@ void Print::init(const std::string & configfile) {
 	  << std::flush;
 
 }
+
+#ifdef IDMEF_SUPPORT_ENABLED
+void Print::update(XMLConfObj* xmlObj)
+{
+	std::cout << "Update received!" << std::endl;
+	if (xmlObj->nodeExists("stop")) {
+		std::cout << "-> stoping module..." << std::endl;
+	} else if (xmlObj->nodeExists("restart")) {
+		std::cout << "-> restarting module..." << std::endl;
+	} else if (xmlObj->nodeExists("config")) {
+		std::cout << "-> updating module configuration..." << std::endl;
+	} else { // add your commands here
+		std::cout << "-> unknown operation" << std::endl;
+	}
+	delete xmlObj;
+}
+#endif
 
 void Print::test(PrintStore * store) {
 

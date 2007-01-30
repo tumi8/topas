@@ -48,6 +48,16 @@ class ExampleModule : public DetectionBase<ExampleDataStorage>
          */
         void test(ExampleDataStorage* store);
 
+#ifdef IDMEF_SUPPORT_ENABLED
+	/** 
+         * Update function. This function will be called, whenever a message
+         * for subscribed key is received from xmlBlaster.
+         * @param xmlObj Pointer to data structure, containing xml data
+         *               You have to delete the memory allocated for the object.
+         */
+  	void update(XMLConfObj* xmlObj);
+#endif
+
 private:
         int threshold;
 

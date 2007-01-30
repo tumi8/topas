@@ -31,6 +31,8 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#include <commonutils/exceptions.h>
+
 #include <string>
 #include <vector>
 
@@ -42,12 +44,18 @@
  */
 class IdmefMessage {
 public:
+
+	typedef enum { ALERT, HEARTBEAT } MessageType;
+
         /**
          * Default constructors.
          * @param analyzerName Name of the detection module.
+         * @param analyzerId Detection module ID.
          * @param classification Classification of the detection method.
+         * @param type Message type (ALERT or HEARTBEAT).
          */
-        IdmefMessage(const std::string& analyzerName, const std::string& classification);
+        IdmefMessage(const std::string& analyzerName, const std::string& analyzerId,
+		     const std::string& classification, MessageType type);
         IdmefMessage();
 
         ~IdmefMessage();
@@ -228,6 +236,13 @@ public:
         void publish(XmlBlasterCommObject& comm, const std::string& topic);
 
 private:
+
+	/*
+	 * Time difference between Unix and net time. 
+	 * Unix time is measured since 1/1/1970.
+	 */
+	const static unsigned long OFFSET_1970 = 2208988800UL;
+
         /**
          * IDMEF-Message string
          */
@@ -237,6 +252,7 @@ private:
          * Variables for the <Analyzer> and <Classification> nodes
          */
         std::string analyzerName;
+	std::string analyzerId;
         std::string classification;
 
         /**
@@ -253,16 +269,26 @@ private:
          * Current date for <CreateTime> node
          */
         std::string getLocalTime();
+	
+	/**
+	 * Return NTP Timestamp
+	 */
+	std::string IdmefMessage::getNtpStamp();
 
         /**
-         * Parse the default IDMEF-Message
+         * Initialisation function
          */
-        void initXmlParser();
+        void init();
 
         /**
-         * Create the default IDMEF-Message body
+         * Create the default IDMEF-Message <Alert> body
          */
-        void createIdmefBody();
+        void createAlertBody();
+
+	/**
+         * Create the default IDMEF-Message <Heartbeat> body
+         */
+        void createHeartbeatBody();
 
         /**
          * Create a single IDMEF node.
