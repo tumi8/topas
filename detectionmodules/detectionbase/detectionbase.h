@@ -63,33 +63,10 @@ class DetectionBase
 {
  public:
         /**
-         * Constructor
-         * @deprecated
-         */
-        DetectionBase()
-#ifdef IDMEF_SUPPORT_ENABLED
-                : currentMessage(NULL), confObj(NULL), alarmTime(10)
-#else
-                : confObj(NULL), alarmTime(10)
-#endif
-        {
-		testMutex.lock();
-                
-                if (SIG_ERR == signal(SIGALRM, DetectionBase<DataStorage, InputPolicy>::sigAlarm)) {
-                        std::cerr << "Can't install signal handler for SIGALARM: " << strerror(errno) << std::endl;
-                        throw std::runtime_error("Could not install signal handler for SIGALARM");
-                }
-                if (SIG_ERR == signal(SIGINT, SIG_IGN)) {
-                        std::cerr << "Can not ignore SIGINT, this will maybe result in strange error messages, when shuting the"
-                                  << "down the system with STRG+C" << std::endl;
-                }
-        }
-
-        /**
          * Constructor taking path to configuration file. This configuration file is needed to
          * pass information about xmlBlaster sites to the module
          */
-        DetectionBase(const std::string& configFile)
+        DetectionBase(const std::string& configFile = "")
 #ifdef IDMEF_SUPPORT_ENABLED
                 : currentMessage(NULL), alarmTime(10)
 #else
