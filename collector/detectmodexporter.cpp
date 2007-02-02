@@ -169,10 +169,10 @@ void DetectModExporter::sendInitData(const DetectMod& detectMod, const std::stri
         */
         tmp = (packetDir.empty()?"dummy_string":packetDir) + "\n";
         write(detectMod.getPipeFd(), tmp.c_str(), tmp.size());
-        if (!additionalData.empty()) {
-                tmp = additionalData + "\n";
-                write(detectMod.getPipeFd(), tmp.c_str(), tmp.size());
-        }
+#ifdef IDMEF_SUPPORT_ENABLED
+        tmp = additionalData + "\n";
+        write(detectMod.getPipeFd(), tmp.c_str(), tmp.size());
+#endif
 }
 
 void DetectModExporter::setPacketDir(const std::string& dir)
