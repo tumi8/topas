@@ -54,9 +54,10 @@ manager::manager(DetectModExporter* exporter)
 		    "Crashing detection modules won't be detected");
         }
 
+#ifdef IDMEF_SUPPORT_ENABLED
         // TODO: remove this after Raimondas merged his topas-dynamic-control into trunk/topas
         topasID = "this_is_a_dummy_id_please_remove_me";
-
+#endif
 	mutex.lock();
 }
 
