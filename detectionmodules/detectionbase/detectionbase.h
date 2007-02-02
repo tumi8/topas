@@ -62,6 +62,11 @@ template <
 class DetectionBase 
 {
  public:
+        typedef enum {
+                RUN,
+                EXIT,
+                RESTART
+        } State;
         /**
          * Constructor taking path to configuration file. This configuration file is needed to
          * pass information about xmlBlaster sites to the module
@@ -194,13 +199,23 @@ class DetectionBase
          */
         int exec() 
         {
+                state = RUN;
                 createTestThread();
-                for (;;) {
+                while (state == RUN) {
                         inputPolicy.wait();
                         inputPolicy.importToStorage();
                         inputPolicy.notify();
                 }
-                return 0;
+
+		pthread_cancel(testThread);
+
+                if (state == RESTART)
+                        return -1;
+                else if (state == EXIT)
+                        return 0;
+
+                // we should never get here!
+                throw new std::runtime_error("DetectionBase: unkown state!!!!!!!!!");
         }
 
 
@@ -220,6 +235,72 @@ class DetectionBase
          * @return Time in seconds, after which the test should be started.
          */
         unsigned getAlarmTime() { return alarmTime; }
+
+        /**
+         * Test-Thread function. This function will run the tests implemented by derived classes.
+         */
+        static void* testThreadFunc(void* detectionbase_) 
+        {
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+		pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+                DetectionBase<DataStorage, InputPolicy>* dbase = static_cast<DetectionBase<DataStorage, InputPolicy>*>(detectionbase_);
+		// when alarmtime > 0, buffering is used
+		// otherwise each record is seperately passed to the test function
+		while(state == RUN) {
+			// what a ugly hack! substitute this with some 
+			// saved state!!!!!
+			while(dbase->getAlarmTime() > 0 && state == RUN) {
+				alarm(dbase->getAlarmTime());
+				dbase->testMutex.lock();
+#ifdef IDMEF_SUPPORT_ENABLED
+ 				for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
+					std::string ret = dbase->commObjs[i]->getUpdateMessage();
+					if (ret != "") {
+						XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
+						if (NULL != confObj) {
+							dbase->update(confObj);
+						}
+                                                delete confObj;
+					}
+ 				}				
+#endif
+				// get received data into the user data struct 
+				dbase->test(inputPolicy.getStorage());
+			}
+			while(dbase->getAlarmTime() == 0 && state == RUN) {
+				DataStorage* d = inputPolicy.getStorage();
+				if (d->isValid()) {
+					dbase->test(d);
+				}
+#ifdef IDMEF_SUPPORT_ENABLED
+ 				for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
+					std::string ret = dbase->commObjs[i]->getUpdateMessage();
+					if (ret != "") {
+						XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
+						if (NULL != confObj) {
+							dbase->update(confObj);
+						}
+                                                delete confObj;
+					}
+ 				}				
+#endif
+			}
+		}
+                
+                return NULL;
+        }
+
+        /** 
+         * Test function. This function will be called, whenever its time to do the test.
+         * You should override this function in derived classes.
+         * _NEVER_ CALL THIS FUNCTION BY HAND IN AN DERIVED CLASS
+         * @param ds Pointer to data structure, containing all data collected since last call
+         *           to test(). 
+         *           You have to delete the memory allocated for the object.
+         */
+        virtual void test(DataStorage* ds) {};
+
 
 #ifdef IDMEF_SUPPORT_ENABLED
         /**
@@ -294,71 +375,7 @@ class DetectionBase
                 sendIdmefMessage(topic, *currentMessage);
         }
 
-#endif //IDMEF_SUPPORT_ENABLED
-
- protected:
-
-        /**
-         * Test-Thread function. This function will run the tests implemented by derived classes.
-         */
-        static void* testThreadFunc(void* detectionbase_) 
-        {
-                DetectionBase<DataStorage, InputPolicy>* dbase = static_cast<DetectionBase<DataStorage, InputPolicy>*>(detectionbase_);
-		// when alarmtime > 0, buffering is used
-		// otherwise each record is seperately passed to the test function
-		while(1) {
-			// what a ugly hack! substitute this with some 
-			// saved state!!!!!
-			while(dbase->getAlarmTime() > 0) {
-				alarm(dbase->getAlarmTime());
-				dbase->testMutex.lock();
-#ifdef IDMEF_SUPPORT_ENABLED
- 				for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
-					std::string ret = dbase->commObjs[i]->getUpdateMessage();
-					if (ret != "") {
-						XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
-						if (NULL != confObj) {
-							dbase->update(confObj);
-						}
-					}
- 				}				
-#endif
-				// get received data into the user data struct 
-				dbase->test(inputPolicy.getStorage());
-			}
-			while(dbase->getAlarmTime() == 0) {
-				DataStorage* d = inputPolicy.getStorage();
-				if (d->isValid()) {
-#ifdef IDMEF_SUPPORT_ENABLED
- 				for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
-					std::string ret = dbase->commObjs[i]->getUpdateMessage();
-					if (ret != "") {
-						XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
-						if (NULL != confObj) {
-							dbase->update(confObj);
-						}
-					}
- 				}				
-#endif
-					dbase->test(d);
-				}
-			}
-		}
-                
-                return NULL;
-        }
-
-        /** 
-         * Test function. This function will be called, whenever its time to do the test.
-         * You should override this function in derived classes.
-         * _NEVER_ CALL THIS FUNCTION BY HAND IN AN DERIVED CLASS
-         * @param ds Pointer to data structure, containing all data collected since last call
-         *           to test(). 
-         *           You have to delete the memory allocated for the object.
-         */
-        virtual void test(DataStorage* ds) = 0;
-	
-#ifdef IDMEF_SUPPORT_ENABLED
+protected:
 	
 	/** 
          * Register function. This function should be called 
@@ -377,16 +394,6 @@ class DetectionBase
 		}
 	}
 
-	/**
-	 * Restarts the module.
-	 */
-	void restart();
-
-	/**
-	 * Stops the module.
-	 */
-	void stop();
-
 	/** 
          * Update function. This function will be called, whenever a message
          * for subscribed key is received from xmlBlaster.
@@ -396,18 +403,27 @@ class DetectionBase
          */
 	virtual void update(XMLConfObj* xmlObj) = 0;
 
-#endif
+#endif // IDMEF_SUPPORT_ENABLED
+
+protected:
+
+	/**
+	 * Restarts the module.
+	 */
+	void restart() {
+		state = RESTART;
+	}
+
+	/**
+	 * Stops the module.
+	 */
+	void stop() {
+		state = EXIT;
+	}
+
 
 
  private:
-        static InputPolicy inputPolicy;
-
-        pthread_t testThread;
-
-        /**
-         * If test_mutex locked, no test will be performed
-         */
-	static Mutex testMutex;
 #ifdef IDMEF_SUPPORT_ENABLED
         IdmefMessage* currentMessage;
         std::string analyzerName, analyzerId, classification;
@@ -415,6 +431,16 @@ class DetectionBase
         std::vector<XmlBlasterCommObject*> commObjs;
         std::vector<GlobalRef> xmlBlasters;
 #endif
+        static InputPolicy inputPolicy;
+
+        pthread_t testThread;
+        static volatile State state;
+
+        /**
+         * If test_mutex locked, no test will be performed
+         */
+	static Mutex testMutex;
+
         XMLConfObj* confObj;
 
 
@@ -448,6 +474,9 @@ template<class DataStorage, class InputPolicy>
 Mutex DetectionBase<DataStorage, InputPolicy>::testMutex;
 template<class DataStorage, class InputPolicy>
 InputPolicy DetectionBase<DataStorage, InputPolicy>::inputPolicy;
-
+template<class DataStorage, class InputPolicy>
+volatile typename DetectionBase<DataStorage, InputPolicy>::State
+        DetectionBase<DataStorage, InputPolicy>::state = 
+                (typename DetectionBase<DataStorage, InputPolicy>::State)0;
 
 #endif
