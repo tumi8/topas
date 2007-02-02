@@ -52,7 +52,11 @@ void ModuleContainer::restartCrashedModule(pid_t pid, DetectModExporter* exporte
 	     i != detectionModules.end(); ++i) {
                 if (pid == (*i)->getPid()) {
                         (*i)->restartCrashed();
+#ifdef IDMEF_SUPPORT_ENABLED
+                        exporter->sendInitData(*(*i), topasID);
+#else
                         exporter->sendInitData(*(*i));
+#endif
                         return;
                 }
         }
