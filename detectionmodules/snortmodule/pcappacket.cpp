@@ -42,7 +42,7 @@ delete iphps_p;
 delete ippps_p;
 };
 
-guint32 PcapPacket::ts_usec = 0;
+uint32_t PcapPacket::ts_usec = 0;
 char *PcapPacket::ts_fmt = NULL;
 PcapPacket::hdr_ethernet_t PcapPacket::HDR_ETHERNET = {
     {0x02, 0x02, 0x02, 0x02, 0x02, 0x02},

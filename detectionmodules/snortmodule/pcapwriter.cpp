@@ -30,27 +30,27 @@
 /*----------------------------------------------------------------------
  * Compute one's complement checksum (from RFC1071)
  */
-guint16 pcapwriter::in_checksum (void *buf, unsigned long count)
+uint16_t pcapwriter::in_checksum (void *buf, unsigned long count)
 {
     unsigned long sum = 0;
-    guint16 *addr = (guint16 *)buf;
+    uint16_t *addr = (uint16_t *)buf;
 
     while( count > 1 )  {
         /*  This is the inner loop */
-        sum += g_ntohs(* (guint16 *) addr);
+        sum += ntohs(* (uint16_t *) addr);
         addr++;
         count -= 2;
     }
 
     /*  Add left-over byte, if any */
     if( count > 0 )
-        sum += g_ntohs(* (guint8 *) addr);
+        sum += ntohs(* (uint8_t *) addr);
 
     /*  Fold 32-bit sum to 16 bits */
     while (sum>>16)
         sum = (sum & 0xffff) + (sum >> 16);
 
-    return g_htons(~sum);
+    return htons(~sum);
 }
 
 
@@ -60,7 +60,7 @@ guint16 pcapwriter::in_checksum (void *buf, unsigned long count)
  */
 
 #define CRC32C(c,d) (c=(c>>8)^crc_c[(c^(d))&0xFF])
-guint32 pcapwriter::crc_c[256] =
+uint32_t pcapwriter::crc_c[256] =
 {
 0x00000000L, 0xF26B8303L, 0xE13B70F7L, 0x1350F3F4L,
 0xC79A971FL, 0x35F1141CL, 0x26A1E7E8L, 0xD4CA64EBL,
@@ -128,10 +128,10 @@ guint32 pcapwriter::crc_c[256] =
 0xBE2DA0A5L, 0x4C4623A6L, 0x5F16D052L, 0xAD7D5351L,
 };
 
-guint32 pcapwriter::crc32c(const guint8* buf, unsigned int len, guint32 crc32_init)
+uint32_t pcapwriter::crc32c(const uint8_t* buf, unsigned int len, uint32_t crc32_init)
 {
   unsigned int i;
-  guint32 crc32;
+  uint32_t crc32;
 
   crc32 = crc32_init;
   for (i = 0; i < len; i++)
@@ -140,10 +140,10 @@ guint32 pcapwriter::crc32c(const guint8* buf, unsigned int len, guint32 crc32_in
   return ( crc32 );
 }
 
-guint32 pcapwriter::finalize_crc32c(guint32 crc32)
+uint32_t pcapwriter::finalize_crc32c(uint32_t crc32)
 {
-  guint32 result;
-  guint8 byte0,byte1,byte2,byte3;
+  uint32_t result;
+  uint8_t byte0,byte1,byte2,byte3;
 
   result = ~crc32;
   byte0 = result & 0xff;
@@ -166,13 +166,13 @@ void pcapwriter::writepacket (PcapPacket* packet)
     int eth_trailer_length = 0;
     int written_ip_octets = 0;
     int padding_length;
-    guint32 u;
+    uint32_t u;
     struct pcaprec_hdr ph;
 
     
     /* Compute packet length */
     if (packet->HDR_IP.packet_length != 0) { // packet length field is given?
-	ip_length = length = g_ntohs(packet->HDR_IP.packet_length);
+	ip_length = length = ntohs(packet->HDR_IP.packet_length);
     } else if (packet->iphps_size > 0) // ip header payload section is given?
 	ip_length = length = packet->iphps_size;
     else {
@@ -195,7 +195,7 @@ void pcapwriter::writepacket (PcapPacket* packet)
 	}
 	length += sizeof(packet->HDR_IP); 
 	ip_length = length;
-	packet->HDR_IP.packet_length = g_htons(length);
+	packet->HDR_IP.packet_length = htons(length);
     }
 
 
@@ -214,7 +214,7 @@ void pcapwriter::writepacket (PcapPacket* packet)
     fwrite(&ph, sizeof(ph), 1, output_file);
 
     /* Write Ethernet header */
-    packet->HDR_ETHERNET.l3pid = g_htons(2048);
+    packet->HDR_ETHERNET.l3pid = htons(2048);
     fwrite(&packet->HDR_ETHERNET, sizeof(packet->HDR_ETHERNET), 1, output_file);
 
     /* Write the packet
@@ -243,7 +243,7 @@ void pcapwriter::writepacket (PcapPacket* packet)
 	    if (packet->hdr_udp) {
 		packet->HDR_UDP.source_port = packet->hdr_src_port;
 		packet->HDR_UDP.dest_port = packet->hdr_dest_port;
-		packet->HDR_UDP.length = g_htons(ip_length - written_ip_octets);
+		packet->HDR_UDP.length = htons(ip_length - written_ip_octets);
 
 		if (calc_thcs && (packet->HDR_UDP.checksum == 0)){
 		    /* initialize pseudo header for checksum calculation */
@@ -254,12 +254,12 @@ void pcapwriter::writepacket (PcapPacket* packet)
 		    pseudoh.length      = packet->HDR_UDP.length;
 
 		    packet->HDR_UDP.checksum = 0;
-		    u = g_ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
-			g_ntohs(in_checksum(&packet->HDR_UDP, sizeof(packet->HDR_UDP)));
-			//  + g_ntohs(in_checksum(packet_buf, curr_offset));
-		    packet->HDR_UDP.checksum = g_htons((u & 0xffff) + (u>>16));
+		    u = ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
+			ntohs(in_checksum(&packet->HDR_UDP, sizeof(packet->HDR_UDP)));
+			//  + ntohs(in_checksum(packet_buf, curr_offset));
+		    packet->HDR_UDP.checksum = htons((u & 0xffff) + (u>>16));
 		    if (packet->HDR_UDP.checksum == 0) /* differenciate between 'none' and 0 */
-			packet->HDR_UDP.checksum = g_htons(1);
+			packet->HDR_UDP.checksum = htons(1);
 		}
 		fwrite(&packet->HDR_UDP, sizeof(packet->HDR_UDP), 1, output_file);
 		written_ip_octets += sizeof(packet->HDR_UDP);
@@ -277,15 +277,15 @@ void pcapwriter::writepacket (PcapPacket* packet)
 		    pseudoh.dest_addr   = packet->HDR_IP.dest_addr;
 		    pseudoh.zero        = 0;
 		    pseudoh.protocol    = packet->HDR_IP.protocol;
-		    pseudoh.length      = g_htons(ip_length - written_ip_octets);
+		    pseudoh.length      = htons(ip_length - written_ip_octets);
 
 		    packet->HDR_TCP.checksum = 0;
-		    u = g_ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
-			g_ntohs(in_checksum(&packet->HDR_TCP, sizeof(packet->HDR_TCP)));
-			// g_ntohs(in_checksum(packet_buf, curr_offset));
-		    packet->HDR_TCP.checksum = g_htons((u & 0xffff) + (u>>16));
+		    u = ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
+			ntohs(in_checksum(&packet->HDR_TCP, sizeof(packet->HDR_TCP)));
+			// ntohs(in_checksum(packet_buf, curr_offset));
+		    packet->HDR_TCP.checksum = htons((u & 0xffff) + (u>>16));
 		    if (packet->HDR_TCP.checksum == 0) /* differenciate between 'none' and 0 */
-			packet->HDR_TCP.checksum = g_htons(1);
+			packet->HDR_TCP.checksum = htons(1);
 		}
 		fwrite(&packet->HDR_TCP, sizeof(packet->HDR_TCP), 1, output_file);
 		written_ip_octets += sizeof(packet->HDR_TCP);
@@ -347,7 +347,7 @@ void pcapwriter::writedummypacket()
 	dpacket->HDR_IP.dest_addr=16777343;
 	dpacket->hdr_src_port=555;
 	dpacket->hdr_dest_port=666;
-	dpacket->hdr_tcp=TRUE;
+	dpacket->hdr_tcp=true;
 	dpacket->HDR_TCP.window=80;
 	writepacket(dpacket);
 	delete dpacket;	

@@ -20,7 +20,8 @@
 #ifndef _PCAPWRITER_H_
 #define _PCAPWRITER_H_
 
-#include <glib.h>
+#include <stdint.h>
+#include <netinet/in.h>
 #include "pcappacket.h"
 #include <stdio.h>
 
@@ -67,47 +68,47 @@ private:
 	char tempbuf[64];
 	unsigned char padding[PADDING];
 
-	guint16 in_checksum (void *buf, unsigned long count);
+	uint16_t in_checksum (void *buf, unsigned long count);
 
 	/*
 	 * The CRC32C code is taken from draft-ietf-tsvwg-sctpcsum-01.txt.
 	 *  That code is copyrighted by D. Otis and has been modified.
 	*/
 	
-	static guint32 crc_c[256];
-	guint32 crc32c(const guint8* buf, unsigned int len, guint32 crc32_init);
-	guint32 finalize_crc32c(guint32 crc32);
+	static uint32_t crc_c[256];
+	uint32_t crc32c(const uint8_t* buf, unsigned int len, uint32_t crc32_init);
+	uint32_t finalize_crc32c(uint32_t crc32);
 					
 	/**\brief "libpcap" file header 
 	 */
 	struct pcap_hdr {
-    		guint32     magic;          ///< magic 
-    		guint16     version_major;  ///< major version number
-    		guint16     version_minor;  ///< minor version number
-    		guint32     thiszone;       ///< GMT to local correction
-    		guint32     sigfigs;        ///< accuracy of timestamps
-    		guint32     snaplen;        ///< max length of captured packets, in octets
-    		guint32     network;        ///< data link type
+    		uint32_t     magic;          ///< magic 
+    		uint16_t     version_major;  ///< major version number
+    		uint16_t     version_minor;  ///< minor version number
+    		uint32_t     thiszone;       ///< GMT to local correction
+    		uint32_t     sigfigs;        ///< accuracy of timestamps
+    		uint32_t     snaplen;        ///< max length of captured packets, in octets
+    		uint32_t     network;        ///< data link type
 	};
 	        
 	/**\brief "libpcap" record header. 
 	 */
 	struct pcaprec_hdr {
-		gint32      ts_sec;         ///< timestamp seconds
-		guint32     ts_usec;        ///< timestamp microseconds
-		guint32     incl_len;       ///< number of octets of packet saved in file
-		guint32     orig_len;       ///< actual length of packet
+		uint32_t     ts_sec;         ///< timestamp seconds
+		uint32_t     ts_usec;        ///< timestamp microseconds
+		uint32_t     incl_len;       ///< number of octets of packet saved in file
+		uint32_t     orig_len;       ///< actual length of packet
 	};
         
 	/**\brief pseudo header for checksum calculation 
 	 */
 	
 	struct pseudoh_t { 
-		guint32 src_addr;
-		guint32 dest_addr;
-		guint8  zero;
-		guint8  protocol;
-		guint16 length;
+		uint32_t src_addr;
+		uint32_t dest_addr;
+		uint8_t  zero;
+		uint8_t  protocol;
+		uint16_t length;
 	};
         
 	pseudoh_t pseudoh;
