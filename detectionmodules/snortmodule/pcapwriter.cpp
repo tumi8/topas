@@ -171,22 +171,33 @@ void pcapwriter::writepacket (PcapPacket* packet)
 
     
     /* Compute packet length */
-    if (packet->HDR_IP.packet_length != 0) {
+    if (packet->HDR_IP.packet_length != 0) { // packet length field is given?
 	ip_length = length = g_ntohs(packet->HDR_IP.packet_length);
-    } else if (packet->iphps_size > 0) 
+    } else if (packet->iphps_size > 0) // ip header payload section is given?
 	ip_length = length = packet->iphps_size;
     else {
-	if (packet->ippps_size == 0) {
-	    if (packet->hdr_udp)
-	        length = sizeof(packet->HDR_UDP);
-	    if (packet->hdr_tcp) 
+	if (packet->ippps_size > 0) // ip packet payload section is given?
+	    length = packet->ippps_size;
+	// TODO: building icmp packets not supported yet
+	else if (packet->hdr_tcp)   // we already know it's tcp
+	    length = sizeof(packet->HDR_TCP);
+	else if (packet->hdr_udp)   // we already know it's udp
+	    length = sizeof(packet->HDR_UDP);
+	else {
+	    /* Get transport header type from IP header field, if possible */
+	    if (packet->HDR_IP.protocol == 6) {
+		packet->hdr_tcp = true;
 		length = sizeof(packet->HDR_TCP);
-	} else length = packet->ippps_size;
-
+	    } else if (packet->HDR_IP.protocol == 17) {
+		packet->hdr_udp = true;
+		length = sizeof(packet->HDR_UDP);
+	    }
+	}
 	length += sizeof(packet->HDR_IP); 
 	ip_length = length;
 	packet->HDR_IP.packet_length = g_htons(length);
     }
+
 
     length += sizeof(packet->HDR_ETHERNET);
     if (length < 60) {
@@ -227,13 +238,6 @@ void pcapwriter::writepacket (PcapPacket* packet)
 
 	if (packet->ippps_size == 0){
 
-	    /* Get transport header type, if not given */
-	    if (!(packet->hdr_udp | packet->hdr_tcp)) {
-		if (packet->HDR_IP.protocol == 6)
-		    packet->hdr_tcp = true;
-	        else if (packet->HDR_IP.protocol == 17)
-		    packet->hdr_udp = true;
-	    }
 		
 	    /* Write UDP header */
 	    if (packet->hdr_udp) {
