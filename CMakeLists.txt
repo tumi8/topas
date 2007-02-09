@@ -53,8 +53,4 @@ IF (IDMEF)
   ADD_DEFINITIONS(-DIDMEF_SUPPORT_ENABLED)
 ENDIF (IDMEF)
 
-################################### Locate Glib2 ###############################################
-
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/modules/FindGlib.cmake)
-
 ADD_DEFINITIONS(-g -pg)
