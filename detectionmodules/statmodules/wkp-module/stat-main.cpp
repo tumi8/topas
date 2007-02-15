@@ -230,14 +230,15 @@ void Stat::update(XMLConfObj* xmlObj)
 	std::cout << "Update received!" << std::endl;
 	if (xmlObj->nodeExists("stop")) {
 		std::cout << "-> stoping module..." << std::endl;
+		stop();
 	} else if (xmlObj->nodeExists("restart")) {
 		std::cout << "-> restarting module..." << std::endl;
+		restart();
 	} else if (xmlObj->nodeExists("config")) {
 		std::cout << "-> updating module configuration..." << std::endl;
 	} else { // add your commands here
 		std::cout << "-> unknown operation" << std::endl;
 	}
-	delete xmlObj;
 }
 #endif
 
@@ -1089,8 +1090,8 @@ void Stat::test(StatStore * store) {
   // Dumping empty records:
 
   if (Data.empty()==true) {
-    std::cerr << "Got empty record; "
-	      << "dumping it and waiting for another record\n";
+//  std::cerr << "Got empty record; "
+//	      << "dumping it and waiting for another record\n";
     if (output_verbosity>=3 || warning_verbosity==1)
       outfile << "Got empty record; "
 	      << "dumping it and waiting for another record" << std::endl;

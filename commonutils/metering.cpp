@@ -52,10 +52,11 @@ void Metering::addValue(unsigned i)
 void Metering::setDirectoryName(const std::string& dirname) 
 {
         struct stat buf;
-        if (-1 == lstat(dirname.c_str(), &buf) && errno != ENOENT) {
+        int n;
+        if (-1 == (n = lstat(dirname.c_str(), &buf)) && errno != ENOENT) {
                 throw std::runtime_error("Could not execute lstat on " + dirname + ": " + strerror(errno));
         }         
-        if (errno == ENOENT) {
+        if (errno == ENOENT && n != 0) {
                 if (-1 == mkdir(dirname.c_str(), S_IRWXU)) {
                        throw std::runtime_error("Could not create dirname " + dirname + ": " + strerror(errno)); 
                 }

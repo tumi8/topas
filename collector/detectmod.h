@@ -39,6 +39,7 @@ class DetectMod
 public:
 	enum State {
 		NotRunning,
+                Remove,
 		Running,
 		Crashed
 	};

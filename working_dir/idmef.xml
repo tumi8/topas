@@ -2,6 +2,7 @@
 <configuration>
   	<xmlBlasters>
 		<xmlBlaster>
+		  <prop>managerID module-manager</prop>
 		  <prop>plugin/socket/hostname 127.0.0.1</prop>
 		  <prop>plugin/socket/port 7607</prop>
 		  <prop>queue/connection/type RAM</prop>

@@ -68,6 +68,14 @@ namespace config_space
 	static const std::string RECORD="record";
 	static const std::string REPLAY="replay";
 	static const std::string OFF="off";
+	static const std::string TOPAS="topas";
+	static const std::string XMLBLASTERS="xmlBlasters";
+	static const std::string XMLBLASTER="xmlBlaster";
+	static const std::string XMLBLASTER_PROP="prop";
+	static const std::string MANAGER_ID="managerID";
+	static const std::string DEFAULT_MANAGER_ID="topas-manager";
+	static const std::string STOP="stop";
+	static const std::string RESTART="restart";
 
 
         static const int MAX_IPFIX_PACKET_LENGTH=65536;

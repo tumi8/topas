@@ -109,7 +109,7 @@ std::string XmlBlasterCommObject::update(const std::string& sessionId, UpdateKey
 					 long contentSize, UpdateQos& updateQos)
 {
 	mutex.lock();
-	updateMessage = std::string(reinterpret_cast<char *>(const_cast<unsigned char *>(content)), contentSize);
+	updateMessage = std::string((char*)content, (char*)(content) + contentSize);
 	updateAvailable = true;
 	mutex.unlock();
 	return "";

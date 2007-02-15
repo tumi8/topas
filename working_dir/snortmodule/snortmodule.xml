@@ -4,11 +4,10 @@
 		<fifo>/tmp/snortfifo</fifo>
 		<calculate_ipheader_checksum>true</calculate_ipheader_checksum>
 		<calculate_transportheader_checksum>true</calculate_transportheader_checksum>
-		<!-- 
-		<execute>/usr/sbin/tcpdump -r /tmp/snortfifo -w /tmp/fufu</execute>
-		-->
-		<execute>/home/nico/coden/work/snort_patched/snort-2.4.4/src/snort -r /tmp/snortfifo -c /etc/snort/snort.conf -l /tmp/</execute>
-		<accept_source_ids>4711,4712</accept_source_ids>
+		<execute>/usr/local/bin/snort -r /tmp/snortfifo -c /etc/snort/snort.conf -l /tmp/</execute>
+		<config_file>/etc/snort/snort.conf</config_file>
+		<rule_file>/etc/snort/rules/own.rules</rule_file>
+		<accept_source_ids>1234</accept_source_ids>
 		<debug_level>4</debug_level>
 	</snortmodule>
 	<xmlwrapper>
@@ -18,6 +17,7 @@
 	</xmlwrapper>
 	<xmlBlasters>
 	  <xmlBlaster>
+	    <prop>managerID module-manager</prop>
 	    <prop>plugin/socket/hostname 127.0.0.1</prop>
 	    <prop>plugin/socket/port 7607</prop>
 	    <prop>queue/connection/type RAM</prop>

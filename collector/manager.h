@@ -30,10 +30,11 @@
 
 #include <commonutils/global.h>
 #include <commonutils/mutex.h>
-
+#include <commonutils/confobj.h>
+#include <commonutils/idmef/idmefmessage.h>
 
 #include <string>
-
+#include <vector>
 
 class collector;
 class DetectModExporter;
@@ -118,6 +119,16 @@ private:
          */
         static void sigChild(int);
 
+#ifdef IDMEF_SUPPORT_ENABLED
+        /**
+         * Update function. This function will be called, whenever a message
+         * for subscribed key is received from xmlBlaster.
+         * @param xmlObj Pointer to data structure, containing xml data
+         *               You have to delete the memory allocated for the object.
+         */
+        void update(XMLConfObj* xmlObj);
+#endif
+
 protected:
         /**
          * The main manager thread function. This function may only be started by the @c collector
@@ -130,6 +141,8 @@ protected:
 #ifdef IDMEF_SUPPORT_ENABLED
         /** TOPAS id for XMLBlaster */
         std::string topasID;
+        std::vector<XmlBlasterCommObject*> commObjs;
+        std::vector<GlobalRef> xmlBlasters;
 #endif
 };
 

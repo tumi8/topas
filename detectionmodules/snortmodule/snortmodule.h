@@ -90,6 +90,8 @@ private:
 	 */
 	
 	ConfObj* config;
+	std::string config_file;
+	std::string rule_file;
 	std::string execute;
 	std::string fifo;
 	static const char* FIFO;

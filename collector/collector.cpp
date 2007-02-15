@@ -270,6 +270,55 @@ void collector::readConfig(const std::string& configFile)
 			}
 		}
 
+#ifdef IDMEF_SUPPORT_ENABLED
+		config->leaveNode();
+		/* configure xmlBlaster connection properties */
+		if (config->nodeExists(config_space::XMLBLASTERS)) {
+			config->enterNode(config_space::XMLBLASTERS);
+			if (config->nodeExists(config_space::XMLBLASTER)) {
+				config->setNode(config_space::XMLBLASTER);
+				unsigned int count = 0;
+				while (config->nextNodeExists()) {
+					config->enterNextNode();
+				 	/* Property does handle properties in the java-way */
+					Property::MapType propMap;
+					std::vector<std::string> props;
+					/* get all properties */
+					if (config->nodeExists(config_space::XMLBLASTER_PROP)) {
+						props.push_back(config->getValue(config_space::XMLBLASTER_PROP));
+						while (config->nextNodeExists()) {
+							props.push_back(config->getNextValue());
+						}
+					} else {
+						msg(MSG_INFO, ("No <" + config_space::XMLBLASTER_PROP + 
+							       "> statement in config file, using default values").c_str());
+					}
+					for (unsigned i = 0; i != props.size(); ++i) {
+						unsigned seperatorPos;
+						if (std::string::npos != (seperatorPos = props[i].find(' '))) {
+							std::string key = std::string(props[i].begin(), props[i].begin() + seperatorPos);
+							std::string value  = std::string(props[i].begin() + seperatorPos + 1, props[i].end());
+							propMap[key] = value;
+						}
+					}
+ 					/* global configuration for each xmlBlaster connection */
+					std::string instanceName = "connection-" + ++count;
+					GlobalRef globalRef =  Global::getInstance().createInstance(instanceName, &propMap);
+					/* get topas id here */
+					std::string str = globalRef.getElement()->getInstanceId();
+					man->topasID = std::string(str.begin() + str.find_last_of("/") + 1, str.end());
+					man->xmlBlasters.push_back(globalRef);
+ 					config->leaveNode();
+				}
+			} else {
+				throw exceptions::ConfigError("No <" + config_space::XMLBLASTER  + "> statement in config file");
+			}
+			config->leaveNode();
+                } else {
+                        throw exceptions::ConfigError("No <" + config_space::XMLBLASTERS  + "> statement in config file");
+                }
+#endif
+
 		config->leaveNode();
 		
 		Metering::setDirectoryName("metering/");
@@ -335,6 +384,8 @@ void collector::run()
 			while (!terminateCollector) {
 				pause();
 			}
+			msg(MSG_INFO, "Shutdown arrived, waiting 2 seconds before exit...");
+			sleep(2);
 		}
 		else {
 			pause();

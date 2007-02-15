@@ -53,24 +53,11 @@ int main(int argc, char **argv)
                         snort->readConfig(argv[1]);
                 }
 		snort->init();
-		return snort->exec();
+		int ret = snort->exec();
+		delete snort;
+		return ret;
 	}catch (std::exception e) {
                 msg(MSG_FATAL, "Got unhandled exception: %s", e.what());
                 return 0;
         }
 }
-/*
-static void sigIntMain(int signum){
- msg(MSG_ERROR, "sigint");
-snort->CleanExit();
-
-}
-
-static void sigTermMain(int signum){
-
- msg(MSG_ERROR, "term");
-snort->CleanExit();
-
-}
-*/
-

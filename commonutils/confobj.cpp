@@ -27,7 +27,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-
+#include <iostream>
 #include <cstring>
 
 
@@ -57,8 +57,9 @@ XMLConfObj::XMLConfObj(const std::string& filename, XmlType sourceType)
 		documentTree  = xmlReadMemory(filename.c_str(), filename.size(), "noname.xml", NULL, 0);
 		if (NULL == documentTree) {
 			throw exceptions::XMLException("Could not parse " + filename);
+		} else {
+			currentLevel = xmlDocGetRootElement(documentTree);
 		}
-		currentLevel = xmlDocGetRootElement(documentTree);
 	} else {
 		throw exceptions::XMLException("Unknown source type " + sourceType);
 	}
@@ -201,7 +202,7 @@ std::string XMLConfObj::toString()
         xmlKeepBlanksDefault(0);
         xmlBufferPtr xmlBufPtr = xmlBufferCreate();
         xmlNodeDump(xmlBufPtr, documentTree, xmlDocGetRootElement(documentTree), 0, 1);
-        std::string ret = std::string((char *)xmlBufPtr->content, xmlBufPtr->size);
+        std::string ret = std::string((char *)xmlBufPtr->content, xmlBufPtr->use);
         xmlBufferFree(xmlBufPtr);
 	return ret;
 }

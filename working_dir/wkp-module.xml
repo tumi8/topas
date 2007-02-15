@@ -2,6 +2,7 @@
 <configuration>
 	<xmlBlasters>
 	        <xmlBlaster>
+		  <prop>managerID module-manager</prop>
 		  <prop>plugin/socket/hostname 127.0.0.1</prop>
 		  <prop>plugin/socket/port 7607</prop>
 		  <prop>queue/connection/type RAM</prop>
@@ -11,15 +12,17 @@
 	</xmlBlasters>
 	<preferences>
 	        <output_file>wkp.output</output_file>
-		<alarm_time>30</alarm_time>
+		<alarm_time>5</alarm_time>
 		<warning_verbosity>1</warning_verbosity>
 	        <output_verbosity>4</output_verbosity>
 		<monitored_value>packets</monitored_value>
 		<protocols>TCP</protocols>
-	        <netmask>24</netmask>
-		<ports>80 8080 443</ports>
+	        <netmask></netmask>
+		<ports></ports>
+		<stat_test_frequency>1</stat_test_frequency>
+		<report_only_first_attack>true</report_only_first_attack>
 		<!--<ip_addresses_to_monitor>some_file</ip_addresses_to_monitor>-->
-		<iplist_maxsize>100</iplist_maxsize>
+		<!--<iplist_maxsize>100</iplist_maxsize>-->
 	</preferences>
 	<test-params>
 		<wilcoxon_test>true</wilcoxon_test>
@@ -28,8 +31,6 @@
 		<sample_old_size>80</sample_old_size>
 		<sample_new_size>20</sample_new_size>
 		<two_sided>true</two_sided>
-		<stat_test_frequency>2</stat_test_frequency>
 		<significance_level>0.05</significance_level>
-		<report_only_first_attack>true</report_only_first_attack>
 	</test-params>
 </configuration>

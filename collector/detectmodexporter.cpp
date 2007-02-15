@@ -114,6 +114,12 @@ int DetectModExporter::wait(DetectMod* module)
         static struct sembuf semaphore;
         static struct timespec t;
         static bool wait;
+
+        // TODO: quick and dirty hack. remove the module if it isn't run!
+        if (module->getState() != DetectMod::Running) {
+                return 0;
+        }
+
         /*
           loop through all detection modules and wait for them to decrement their semaphores.
           if the detection modules aren't able to parse the packets within killTime seconds

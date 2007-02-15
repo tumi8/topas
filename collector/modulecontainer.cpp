@@ -66,7 +66,12 @@ void ModuleContainer::restartCrashedModule(pid_t pid, DetectModExporter* exporte
 
 void ModuleContainer::deleteModule(pid_t pid)
 {
-        
+        for (std::vector<DetectMod*>::iterator i = detectionModules.begin();
+             i != detectionModules.end(); ++i) {
+                if (pid == (*i)->getPid()) {
+                        (*i)->setState(DetectMod::Remove);
+                }
+        }
 }
 
 void ModuleContainer::startModules(DetectModExporter* exporter) 
@@ -107,7 +112,18 @@ void ModuleContainer::setState(pid_t pid, DetectMod::State state)
 
 void ModuleContainer::notifyAll(DetectModExporter* exporter)
 {
-	/* notify the modules */
+        /* this is the right place to remove no longer modules from the container */
+        int i = 0;
+        while (i < detectionModules.size()) {
+                if (detectionModules[i]->getState() == DetectMod::Remove) {
+                        msg(MSG_INFO, "Finaly removing detection module!");
+                        detectionModules.erase(detectionModules.begin() + i);
+                        continue;
+                }
+                ++i;
+        }
+
+        /* notify the modules */
 	for (std::vector<DetectMod*>::iterator i = detectionModules.begin();
 	     i != detectionModules.end(); ++i) {
 		exporter->notify(*i);

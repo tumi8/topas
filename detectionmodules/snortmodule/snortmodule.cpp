@@ -30,6 +30,7 @@
 
 #include <concentrator/msg.h>
 
+#include <fstream>
 
 using namespace ConfigStrings;
 bool Snortmodule::shutdown=false;
@@ -67,11 +68,6 @@ Snortmodule::Snortmodule(const std::string& filename) : DetectionBase<SnortStore
 	subscribeTypeId(313);//PSAMP_TYPEID_ipHeaderPacketSection 
 	subscribeTypeId(314);//PSAMP_TYPEID_ipPayloadPacketSection  
 
-#ifdef IDMEF_SUPPORT_ENABLED
-	/* register module */
-	registerModule("snortmodule");
-#endif
-
 	// Sighandlers		
 	if (signal(SIGTERM, sigTerm) == SIG_ERR) {
                msg(MSG_ERROR, "Snortmodule: Couldn't install signal handler for SIGTERM.\n ");
@@ -87,6 +83,7 @@ Snortmodule::Snortmodule(const std::string& filename) : DetectionBase<SnortStore
 }
 
 Snortmodule::~Snortmodule(){
+	CleanExit();
 }
 
 
@@ -171,6 +168,12 @@ void Snortmodule::init(){
 	writer->init(fifofd,calc_thcs,calc_iphcs);
 	writer->writedummypacket(); // for debug proposes only
 	msg(MSG_INFO, "Snortmodule: All set up");
+
+#ifdef IDMEF_SUPPORT_ENABLED
+	/* register module */
+	registerModule("snortmodule");
+#endif
+
 }
 
 
@@ -178,33 +181,135 @@ void Snortmodule::CleanExit(){
 	msg(MSG_INFO, "Snortmodule: Shutting down...");
 	std::cout << "Snortmodule: <---- "<<writer->get_packets_read() <<" packets read " << writer->get_packets_written() << " written and " << (writer->get_packets_read()-writer->get_packets_written()) << " dropped. ---->"<<std::endl;
 	msg(MSG_INFO, "Snortmodule: Cleaning up...");
+
 	delete writer;
 	kill(pid, SIGINT);
-	if ((pid=wait(NULL))!=0) msg(MSG_ERROR,"Snortmodule: Child exited with exitcode != 0 (Most of the time ok)");
 	fclose(fifofd);
 	unlink(FIFO);
 #ifdef IDMEF_SUPPORT_ENABLED
 	unlink(wrapperConfig.fifoname.c_str());
 #endif
 	msg(MSG_INFO, "Snortmodule: Exiting");
-	//pthread_exit(NULL);
-	exit(0);
 }
 
 #ifdef IDMEF_SUPPORT_ENABLED
 void Snortmodule::update(XMLConfObj* xmlObj)
 {
-	std::cout << "Update received!" << std::endl;
-	if (xmlObj->nodeExists("stop")) {
-		std::cout << "-> stoping module..." << std::endl;
-	} else if (xmlObj->nodeExists("restart")) {
-		std::cout << "-> restarting module..." << std::endl;
-	} else if (xmlObj->nodeExists("config")) {
-		std::cout << "-> updating module configuration..." << std::endl;
+	msg(MSG_INFO, "Update received!");
+	/* stop module */
+	if (xmlObj->nodeExists(config_space::STOP)) {
+		msg(MSG_INFO, "-> stoping snortmodule...");
+		stop();
+	} 
+	/* restart module */
+	else if (xmlObj->nodeExists(config_space::RESTART)) {
+		msg(MSG_INFO, "-> restarting snortmodule...");
+		restart();
+	} 
+	/* get snort configuration */
+	else if (xmlObj->nodeExists(GET_SNORT_CONFIG)) {
+		msg(MSG_INFO, "-> retrieving snort configuration...");
+		std::ifstream inputStream;
+		char* line = NULL;
+		inputStream.open(config_file.c_str(), std::ios::in);
+		if (!inputStream) {
+			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+					   config_file + "\"</result>");
+		} else {
+			std::string message;
+			std::string line;
+			while (std::getline(inputStream, line)) {
+				message += line + "\n";
+			}
+			message = "<result>" + message + "</result>";
+			sendControlMessage(message);
+			inputStream.close();
+		}
+	} 
+	/* update snort configuration */
+	else if (xmlObj->nodeExists(UPDATE_SNORT_CONFIG)) {
+		msg(MSG_INFO, "-> updating snort configuration...");
+		std::ofstream outputStream;
+		outputStream.open(config_file.c_str(), std::ios::trunc);
+		if (!outputStream) {
+			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+					   config_file + "\" for writing</result>");
+		} else {
+			std::string message = xmlObj->getValue("updateSnortConfig");
+			outputStream.write(message.c_str(), message.size());
+			message = "<result>Update succesful</result>";
+			sendControlMessage(message);
+			outputStream.close();
+		}
+	} 
+	/* get snort rule file */
+	else if (xmlObj->nodeExists(GET_SNORT_RULE_FILE)) {
+		msg(MSG_INFO, "-> retrieving snort rule file...");
+		std::ifstream inputStream;
+		char* line = NULL;
+		inputStream.open(rule_file.c_str(), std::ios::in);
+		if (!inputStream) {
+			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+					   rule_file + "\"</result>");
+		} else {
+			std::string message;
+			std::string line;
+			while (std::getline(inputStream, line)) {
+				message += line + "\n";
+			}
+			message = "<result>" + message  + "</result>";
+			sendControlMessage(message);
+			inputStream.close();
+		}
+	} 
+	/* update snort rule file */
+	else if (xmlObj->nodeExists(UPDATE_SNORT_RULE_FILE)) {
+		msg(MSG_INFO, "-> updating snort rule file...");
+		std::ofstream outputStream;
+		outputStream.open(rule_file.c_str(), std::ios::trunc);
+		if (!outputStream) {
+			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+					   rule_file + "\" for writing</result>");
+		} else {
+			std::string message = xmlObj->getValue("updateSnortRuleFile");
+			outputStream.write(message.c_str(), message.size());
+			message = "<result>Update successful</result>";
+			sendControlMessage(message);
+			outputStream.close();
+		}
+	} 
+	/* append snort rule file */
+	else if (xmlObj->nodeExists(APPEND_SNORT_RULE_FILE)) {
+		msg(MSG_INFO, "-> appending snort rule file...");
+		std::ofstream outputStream;
+		outputStream.open(rule_file.c_str(), std::ios::app);
+		if (!outputStream) {
+			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+					   rule_file + "\" for writing</result>");
+		} else {
+			std::string message = xmlObj->getValue("appendSnortRuleFile");
+			outputStream.write(message.c_str(), message.size());
+			message = "<result>Update successful</result>";
+			sendControlMessage(message);
+			outputStream.close();
+		}
+	} 
+	/* clear snort rule file */
+	else if (xmlObj->nodeExists(CLEAR_SNORT_RULE_FILE)) {
+		msg(MSG_INFO, "-> clearing snort rule file...");
+		std::ofstream outputStream;
+		outputStream.open(rule_file.c_str(), std::ios::trunc);
+		if (!outputStream) {
+			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+					   rule_file + "\" for writing</result>");
+		} else {
+			std::string message = "<result>Update successful</result>";
+			sendControlMessage(message);
+			outputStream.close();
+		}
 	} else { // add your commands here
-		std::cout << "-> unknown operation" << std::endl;
+		msg(MSG_INFO, "-> unknown operation");
 	}
-	delete xmlObj;
 }
 #endif
 
@@ -222,7 +327,16 @@ void Snortmodule::readConfig(const std::string& filename)
 	if (doRead && NULL != (tmp = config->getValue(DEBUG_LEVEL))) {
 		                msg_setlevel(atoi(tmp));
 	}
-
+	if (doRead && NULL != (tmp = config->getValue(CONFIG_FILE))) {
+		config_file = tmp;
+	} else {
+		config_file = DEFAULT_CONFIG_FILE;
+	}
+	if (doRead && NULL != (tmp = config->getValue(RULE_FILE))) {
+		rule_file = tmp;
+	} else {
+		rule_file = DEFAULT_RULE_FILE;
+	}
 	if (doRead && NULL != (tmp = config->getValue(EXECUTE))) {
 		execute = tmp;
 	} else {
@@ -318,7 +432,6 @@ if (shutdown) return;
                 }
         }
 	shutdown=true;
-  	CleanExit();
 }
 
 
@@ -327,7 +440,7 @@ void Snortmodule::sigTerm(int signum)
 {
 	if (shutdown) return;
 	shutdown=true;
-	CleanExit();
+	stop();
 }
 
 
@@ -335,7 +448,7 @@ void Snortmodule::sigInt(int signum)
 {
 	if (shutdown) return;
 	shutdown=true;
-	CleanExit();
+	stop();
 }
 
 #ifdef IDMEF_SUPPORT_ENABLED

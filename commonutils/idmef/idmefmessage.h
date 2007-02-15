@@ -237,6 +237,11 @@ public:
 
 private:
 
+	/**
+	 * Message type
+	 */
+	std::string messageType;
+	
 	/*
 	 * Time difference between Unix and net time. 
 	 * Unix time is measured since 1/1/1970.

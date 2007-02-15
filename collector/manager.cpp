@@ -64,6 +64,13 @@ manager::manager(DetectModExporter* exporter)
 
 manager::~manager()
 {
+#ifdef IDMEF_SUPPORT_ENABLED
+        msg(MSG_DEBUG, "Disconnecting from xmlBlaster servers");
+        for (unsigned i = 0; i != commObjs.size(); ++i) {
+                commObjs[i]->disconnect();
+                delete commObjs[i];
+        }
+#endif
 }
 
 void manager::addDetectionModule(const std::string& modulePath, const std::vector<std::string>& arguments) 
@@ -88,8 +95,35 @@ void manager::startModules()
         if (topasID.empty()) {
                 throw std::runtime_error("TOPAS id is empty. Cannot start modules!");
         }
-        detectionModules.topasID = topasID;
+        detectionModules.topasID = config_space::TOPAS + "-" + topasID;
+
+        /* connect to all xmlBlaster servers */
+        msg(MSG_INFO, "Connecting to xmlBlaster servers");
+        for (unsigned i = 0; i != xmlBlasters.size(); ++i) {
+                try {
+                        XmlBlasterCommObject* comm = new XmlBlasterCommObject(*xmlBlasters[i].getElement());
+                        comm->connect();
+                        commObjs.push_back(comm);
+                } catch (const XmlBlasterException &e) {
+                        msg(MSG_FATAL, "Cannot connect to xmlBlaster: ", e.what());
+                        throw std::runtime_error("Make sure, the xmlBlaster server is up and running.");
+                }
+        }
+        /* send <Heartbeat> message to all xmlBlaster servers and subscribe for update messages */
+        IdmefMessage* currentMessage = new IdmefMessage(config_space::TOPAS, topasID, "", IdmefMessage::HEARTBEAT);
+        for (unsigned i = 0; i != commObjs.size(); ++i) {
+		std::string managerID = (*xmlBlasters[i].getElement()).getProperty().getProperty(config_space::MANAGER_ID);
+                if (managerID == "") {
+                        msg(MSG_INFO, ("Using default " + config_space::MANAGER_ID + " \""
+                                       + config_space::DEFAULT_MANAGER_ID + "\"").c_str());
+                        managerID = config_space::DEFAULT_MANAGER_ID;
+                }
+                currentMessage->publish(*commObjs[i], managerID);
+                commObjs[i]->subscribe(config_space::TOPAS + "-" + topasID, XmlBlasterCommObject::MESSAGE);
+        }
+        delete currentMessage;
 #endif
+
         detectionModules.startModules(exporter);
 }
 
@@ -109,7 +143,7 @@ void manager::sigChild(int sig)
         if (shutdown)
                 return;
 
-        msg(MSG_ERROR, "Manager: A detection module died.");
+        msg(MSG_ERROR, "Manager: A detection module exited.");
         int status;
         pid_t pid = wait(&status);
         if (pid == -1)
@@ -119,7 +153,7 @@ void manager::sigChild(int sig)
         if (WIFEXITED(status)) {
                 if (WEXITSTATUS(status) == 0) {
                         msg(MSG_ERROR, "Manager: Detection module with pid %i"
-			    "terminated normally. Not restarting module", pid);
+			    "terminated with exist state 0. Not restarting module", pid);
 			detectionModules.setState(pid, DetectMod::NotRunning);
 			return;
                 }else {
@@ -157,9 +191,18 @@ void* manager::run(void* data)
 		detectionModules.notifyAll(exporter);
 		exporter->clearSink();
 		alarm(0);
-                
-                // TODO: check and handle XML-Blaster messages
-
+ 
+#ifdef IDMEF_SUPPORT_ENABLED
+                for (unsigned i = 0; i != man->commObjs.size(); ++i) {
+			std::string ret = man->commObjs[i]->getUpdateMessage();
+                        if (ret != "") {
+                                XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
+                                if (NULL != confObj) {
+                                        man->update(confObj);
+                                }
+                        }
+                }
+#endif               
 	}
         return NULL;
 }
@@ -188,3 +231,18 @@ void manager::killModules()
 {
 	detectionModules.killDetectionModules();
 }
+
+#ifdef IDMEF_SUPPORT_ENABLED
+void manager::update(XMLConfObj* xmlObj)
+{
+	std::cout << "Update for topas received!" << std::endl;
+        if (xmlObj->nodeExists("start")) {
+		std::cout << "-> starting module..." << std::endl;
+        } else if (xmlObj->nodeExists("stop")) {
+		std::cout << "-> stoping module..." << std::endl;
+        } else { // add your commands here
+		std::cout << "-> unknown operation" << std::endl;
+        }
+        delete xmlObj;
+}
+#endif

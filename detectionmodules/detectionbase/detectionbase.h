@@ -85,12 +85,13 @@ class DetectionBase
                         throw std::runtime_error("Could not install signal handler for SIGALARM");
                 }
 		confObj = new XMLConfObj(configFile, XMLConfObj::XML_FILE);
+
 #ifdef IDMEF_SUPPORT_ENABLED
                 /* parse confiuration file to get all xmlBlasters and their properties */
-                if (confObj->nodeExists("xmlBlasters")) {
-			confObj->enterNode("xmlBlasters");
-			if (confObj->nodeExists("xmlBlaster")) {
-				confObj->setNode("xmlBlaster");
+                if (confObj->nodeExists(config_space::XMLBLASTERS)) {
+			confObj->enterNode(config_space::XMLBLASTERS);
+			if (confObj->nodeExists(config_space::XMLBLASTER)) {
+				confObj->setNode(config_space::XMLBLASTER);
 				unsigned int count = 0;
 				while (confObj->nextNodeExists()) {
 					confObj->enterNextNode();
@@ -98,13 +99,14 @@ class DetectionBase
 					Property::MapType propMap;
 					std::vector<std::string> props;
 					/* get all properties */
-					if (confObj->nodeExists("prop")) {
-						props.push_back(confObj->getValue("prop"));
+					if (confObj->nodeExists(config_space::XMLBLASTER_PROP)) {
+						props.push_back(confObj->getValue(config_space::XMLBLASTER_PROP));
 						while (confObj->nextNodeExists()) {
 							props.push_back(confObj->getNextValue());
 						}
 					} else {
-						std::cerr << "No <prop> statement in config file, using default values"
+						std::cerr << "No <" << config_space::XMLBLASTER_PROP 
+							  << "> statement in config file, using default values"
 							  << std::endl;
 					}
 					for (unsigned i = 0; i != props.size(); ++i) {
@@ -125,14 +127,14 @@ class DetectionBase
  					confObj->leaveNode();
 				}
 			} else {
-				std::cerr << "No <xmlBlaster> statement in config file" << std::endl;
+				std::cerr << "No <" << config_space::XMLBLASTER << "> statement in config file" << std::endl;
 			}
-
+			
                 } else {
-                        std::cerr << "No <xmlBlasters> statement in config file" << std::endl;
+                        std::cerr << "No <" << config_space::XMLBLASTERS << "> statement in config file" << std::endl;
                 }
                 
-                /* connect to all xmlBlaster sites */
+                /* connect to all xmlBlaster servers */
                 for (unsigned i = 0; i != xmlBlasters.size(); ++i) {
 			try {
 				XmlBlasterCommObject* comm = new XmlBlasterCommObject(*xmlBlasters[i].getElement());
@@ -200,14 +202,17 @@ class DetectionBase
         int exec() 
         {
                 state = RUN;
-                createTestThread();
-                while (state == RUN) {
-                        inputPolicy.wait();
-                        inputPolicy.importToStorage();
-                        inputPolicy.notify();
-                }
+                pthread_create(&testThread, NULL,
+			       DetectionBase<DataStorage, InputPolicy>::testThreadFunc, this);
+		pthread_create(&workingThread, NULL,
+			       DetectionBase<DataStorage, InputPolicy>::workThreadFunc, this);
+
+		while (state == RUN) {
+			usleep(500);
+		}
 
 		pthread_cancel(testThread);
+		pthread_cancel(workingThread);
 
                 if (state == RESTART)
                         return -1;
@@ -218,23 +223,18 @@ class DetectionBase
                 throw new std::runtime_error("DetectionBase: unkown state!!!!!!!!!");
         }
 
+	static void* workThreadFunc(void* detectionbase_) {
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+		pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
-        /**
-         * Sets the new interval, after which a new test should be performed. Changes to the alarmtime
-	 * will take effect after the currently running alarm is triggered.
-         * @param sec Seconds till next test run
-         */
-        void setAlarmTime(unsigned  sec) 
-        {
-                alarmTime = sec;
-        }
+                DetectionBase<DataStorage, InputPolicy>* dbase = static_cast<DetectionBase<DataStorage, InputPolicy>*>(detectionbase_);
 
-
-        /**
-         * Returns time, after which the test should be started.
-         * @return Time in seconds, after which the test should be started.
-         */
-        unsigned getAlarmTime() { return alarmTime; }
+                while (state == RUN) {
+                        inputPolicy.wait();
+                        inputPolicy.importToStorage();
+                        inputPolicy.notify();
+                }
+	}
 
         /**
          * Test-Thread function. This function will run the tests implemented by derived classes.
@@ -302,6 +302,26 @@ class DetectionBase
         virtual void test(DataStorage* ds) {};
 
 
+        /**
+         * Sets the new interval, after which a new test should be performed. Changes to the alarmtime
+	 * will take effect after the currently running alarm is triggered.
+         * @param sec Seconds till next test run
+         */
+        void setAlarmTime(unsigned  sec) 
+        {
+                alarmTime = sec;
+        }
+
+
+        /**
+         * Returns time, after which the test should be started.
+         * @return Time in seconds, after which the test should be started.
+         */
+        unsigned getAlarmTime() { return alarmTime; }
+
+
+
+
 #ifdef IDMEF_SUPPORT_ENABLED
         /**
          * Returns the current IDMEF message object. A new message is generated if there is no current message.
@@ -329,6 +349,7 @@ class DetectionBase
         {
                 delete currentMessage;
                 currentMessage = new IdmefMessage(analyzerName, analyzerId, classification, IdmefMessage::ALERT);
+		currentMessage->setAnalyzerAttr("", topasID, "", "");
                 return *currentMessage;
         
         }
@@ -366,6 +387,17 @@ class DetectionBase
 		}
 	}
 
+	void sendControlMessage(const std::string& message)
+	{
+		for (unsigned i = 0; i != commObjs.size(); ++i) {
+			std::string managerID = (*xmlBlasters[i].getElement()).getProperty().getProperty(config_space::MANAGER_ID);
+			if (managerID == "") {
+				managerID = config_space::DEFAULT_MANAGER_ID;
+			}
+			commObjs[i]->publish(message, managerID);
+		}
+	}
+
         /**
          * Sends current IDMEF-Message
          * @param topic Publish the IDMEF-Message under given topic..
@@ -385,15 +417,20 @@ protected:
          */
 	void registerModule(const std::string& analyzerName)
 	{
-		/* send <Heartbeat> message to all xmlBlaster sites and subscribe for update messages */
+		/* send <Heartbeat> message to all xmlBlaster servers and subscribe for update messages */
 		currentMessage = new IdmefMessage(analyzerName, analyzerId, classification, IdmefMessage::HEARTBEAT);
-		/* need to get TOPAS ID somehow */
-		sendIdmefMessage(topasID, *currentMessage);
+		currentMessage->setAnalyzerAttr("", topasID, "", "");
 		for (unsigned i = 0; i != commObjs.size(); ++i) {
+			std::string managerID = (*xmlBlasters[i].getElement()).getProperty().getProperty(config_space::MANAGER_ID);
+			if (managerID == "") {
+				msg(MSG_INFO, ("Using default " + config_space::MANAGER_ID + " \"" 
+					       + config_space::DEFAULT_MANAGER_ID + "\"").c_str());
+				managerID = config_space::DEFAULT_MANAGER_ID;
+			}
+			currentMessage->publish(*commObjs[i], managerID);
 			commObjs[i]->subscribe(analyzerName + "-" + analyzerId, XmlBlasterCommObject::MESSAGE);
 		}
 	}
-
 	/** 
          * Update function. This function will be called, whenever a message
          * for subscribed key is received from xmlBlaster.
@@ -410,14 +447,14 @@ protected:
 	/**
 	 * Restarts the module.
 	 */
-	void restart() {
+	static void restart() {
 		state = RESTART;
 	}
 
 	/**
 	 * Stops the module.
 	 */
-	void stop() {
+	static void stop() {
 		state = EXIT;
 	}
 
@@ -434,6 +471,7 @@ protected:
         static InputPolicy inputPolicy;
 
         pthread_t testThread;
+	pthread_t workingThread;
         static volatile State state;
 
         /**
@@ -445,17 +483,6 @@ protected:
 
 
         unsigned alarmTime;
-
-
-        /**
-         * Create an thread wich will be responsible to start the test
-         * after the configured interval. 
-         */
-        void createTestThread() 
-        {
-                pthread_create(&testThread, NULL, DetectionBase<DataStorage, InputPolicy>::testThreadFunc, this);
-        }
-
         
         /**
          * Signal handler for SIGALRM. This signal is emmited, evry time
