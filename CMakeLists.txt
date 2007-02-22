@@ -35,15 +35,13 @@ LINK_DIRECTORIES(${CMAKE_BUILD_DIR}/concentrator ${CMAKE_BUILD_DIR}/commonutils)
 
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/modules/FindGSL.cmake)
 
-#################################### Check for libXerces #######################################
-
-INCLUDE(${CMAKE_SOURCE_DIR}/cmake/modules/FindXerces.cmake)
-
 #################################### Look for xmlBlaster #######################################
 
 OPTION(IDMEF "Enable/Disable IDMEF-Support. Requires xmlBlaster if enabled." ON)
 
 IF (IDMEF)
+  #### Check for libXerces ####
+  INCLUDE(${CMAKE_SOURCE_DIR}/cmake/modules/FindXerces.cmake)
   message(STATUS "Looking for xmlBLaster...")
   INCLUDE(${CMAKE_SOURCE_DIR}/cmake/modules/FindXmlBlaster.cmake)
   IF (NOT XERCES_FOUND)
@@ -51,6 +49,8 @@ IF (IDMEF)
   ENDIF (NOT XERCES_FOUND)
   message(STATUS "Applying defines...")
   ADD_DEFINITIONS(-DIDMEF_SUPPORT_ENABLED)
+ELSE (IDMEF)
+  REMOVE_DEFINITIONS(-DIDMEF_SUPPORT_ENABLED)
 ENDIF (IDMEF)
 
 ADD_DEFINITIONS(-g -pg)
