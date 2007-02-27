@@ -200,10 +200,12 @@ void pcapwriter::writepacket (PcapPacket* packet)
 
 
     length += sizeof(packet->HDR_ETHERNET);
+    /* we do not need to respeect minimum frame size
     if (length < 60) {
 	eth_trailer_length = 60 - length;
 	length = 60;
     }
+    */
 
     /* Write PCap header */
     ph.ts_sec = packet->ts_sec;
@@ -325,11 +327,11 @@ void pcapwriter::writepacket (PcapPacket* packet)
 	}
     }
 
-    /* Write Ethernet trailer */
+    /* Write Ethernet trailer
     if (eth_trailer_length > 0 ) {
 	memset(tempbuf, 0, eth_trailer_length);
 	fwrite(tempbuf, eth_trailer_length, 1, output_file);
-    }
+    } */
     fflush(output_file);
     ++packets_written;
 
