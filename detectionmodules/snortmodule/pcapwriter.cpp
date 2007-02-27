@@ -240,7 +240,7 @@ void pcapwriter::writepacket (PcapPacket* packet)
 
 		
 	    /* Write UDP header */
-	    if (packet->hdr_udp) {
+	    if (packet->hdr_udp && (ip_length >= 28)) {
 		packet->HDR_UDP.source_port = packet->hdr_src_port;
 		packet->HDR_UDP.dest_port = packet->hdr_dest_port;
 		packet->HDR_UDP.length = htons(ip_length - written_ip_octets);
@@ -267,7 +267,7 @@ void pcapwriter::writepacket (PcapPacket* packet)
 
 
 	    /* Write TCP header */
-	    else if (packet->hdr_tcp) {
+	    else if (packet->hdr_tcp && (ip_length >= 40)) {
 		packet->HDR_TCP.source_port = packet->hdr_src_port;
 		packet->HDR_TCP.dest_port = packet->hdr_dest_port;
 		if (calc_thcs && (packet->HDR_TCP.checksum == 0)){
@@ -294,13 +294,23 @@ void pcapwriter::writepacket (PcapPacket* packet)
 	}
 
 	else {
-	   fwrite(packet->ippps_p,packet->ippps_size, 1, output_file);
-	   written_ip_octets += packet->ippps_size;
+	   int size = packet->ippps_size;
+	   
+	   if ((size + written_ip_octets) >= ip_length) // a bad exporter might export ethernet padding as ip payload
+		size = ip_length  - written_ip_octets;
+	   
+	   fwrite(packet->ippps_p,size, 1, output_file);
+	   written_ip_octets += size;
 	}
     }
     else {
-	fwrite(packet->iphps_p,packet->iphps_size, 1, output_file);
-	written_ip_octets += packet->iphps_size;
+        int size = packet->iphps_size;
+
+        if ((size + written_ip_octets) >= ip_length) // a bad exporter might export ethernet padding as ip payload
+	    size = ip_length  - written_ip_octets;
+
+	fwrite(packet->iphps_p,size, 1, output_file);
+	written_ip_octets += size;
     }
 
     /* Add padding */
