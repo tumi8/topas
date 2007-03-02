@@ -57,11 +57,11 @@ void usage(char* name)
  */
 int run_collector(const std::string& configFile) 
 {
-        collector collect;
+        Collector collector;
 
         /* read the configuration */
         try {
-                collect.readConfig(configFile);
+                collector.readConfig(configFile);
         }catch (exceptions::ConfigError e) {
                 msg(MSG_FATAL, "Couldn't configure collector: %s", e.what());
                 return error_states::CONFIG_ERROR;
@@ -69,7 +69,7 @@ int run_collector(const std::string& configFile)
 
         /* start the detection modules */
         try {
-                collect.startModules();
+                collector.startModules();
         }catch (exceptions::DetectionModuleError e) {
                 msg(MSG_FATAL, "Couldn't start detection modules: %s", e.what());
                 return error_states::DETECTION_MODULE_ERROR;
@@ -81,7 +81,7 @@ int run_collector(const std::string& configFile)
         msg(MSG_INFO, "Starting up collector...");
 
         try {
-                collect.run();
+                collector.run();
         } catch (std::exception e) {
                 msg(MSG_FATAL, "Error while running the collector: %s", e.what());
                 return error_states::RUN_ERROR;

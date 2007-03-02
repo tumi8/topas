@@ -31,10 +31,11 @@
 #include <string>
 
 
-class manager;
+class Manager;
 class CollectorConfObj;
 class RecorderBase;
 class DetectModExporter;
+class XMLConfObj;
 
 
 /**
@@ -42,18 +43,18 @@ class DetectModExporter;
  * a detectionmodule exporter object.
  * The detection module manager is started and controlled by this class 
  */
-class collector
+class Collector
 {
 public:
         /**
          * Constructor. Constructs the main collector object.
          */
-        collector();
+        Collector();
 
         /**
          * Destructor. Deinitializes the mail collector object.
          */
-        ~collector();
+        ~Collector();
         
         /**
          * Parses the configuration file.
@@ -86,9 +87,8 @@ public:
         void setReceiverType(Receiver_Type r_t);
 
  private:
-        static manager* man;
+        static Manager* man;
         static bool terminateCollector;
-        CollectorConfObj* config;
 	static RecorderBase* recorder;
 
         static DetectModExporter* exporter;
@@ -96,6 +96,47 @@ public:
         static bool replaying;
 
 	std::string packetDir;
+	
+	/**
+	 * Read working dir from configuration file.
+	 * @param confObj Configuration object
+	 */
+	void readWorkingDir(XMLConfObj* config);
+
+	/**
+	 * Read list of detection modules from configuration file.
+	 * @param confObj Configuration object
+	 */
+	void readDetectionModules(XMLConfObj* config);
+
+	/**
+	 * Read miscellaneous items from the configuration file.
+	 * @param confObj Configuration object
+	 */
+	void readMisc(XMLConfObj* config);
+
+	/**
+	 * Read all information necessary to exchange IPFIX packets
+	 * between collector and detection modules.
+	 * 
+	 * There are currently two possible exchange methods:
+	 * 1.) Via a file system (stable and good tested, but slow)
+	 * 2.) Via a shared memory block (unstable and not so well tested, but very fast)
+	 * @param confObj Configuration object
+	 */
+	void readExchangeProtocol(XMLConfObj* config);
+
+	/**
+	 * Read all information that is needed for recording or replaying traffic.
+	 * @param confObj Configuration object
+	 */
+	void readRecording(XMLConfObj* config);
+
+	/**
+	 * Read IDMEF specific stuff if IDMEF-Support is enabled.
+	 * @param confObj Configuration object
+	 */
+	void readIDMEF(XMLConfObj* config);
 
  protected:
         /**

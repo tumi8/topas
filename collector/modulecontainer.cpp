@@ -77,6 +77,9 @@ void ModuleContainer::deleteModule(pid_t pid)
 void ModuleContainer::startModules(DetectModExporter* exporter) 
 {
         for (unsigned i = 0; i != detectionModules.size(); ++i) {
+		// do not start already running modules
+		if (detectionModules[i]->getState() == DetectMod::Running)
+			continue;
                 msg(MSG_INFO, "Starting module number %d: %s", i+1, 
 		    detectionModules[i]->getFileName().c_str());
                 exporter->installNotification(*detectionModules[i]);
@@ -136,3 +139,27 @@ void ModuleContainer::notifyAll(DetectModExporter* exporter)
                 }
 	}
 }
+
+void ModuleContainer::findAndKillSlowModule()
+{
+	for (std::vector<DetectMod*>::iterator i = detectionModules.begin();
+	     i != detectionModules.end(); ++i) {
+		if ((*i)->getBusyState()) {
+			(*i)->stopModule();			
+		}
+	}
+}
+
+#ifdef IDMEF_SUPPORT_ENABLED
+std::vector<std::string> ModuleContainer::getRunningModules()
+{
+	std::vector<std::string> ret;
+	for (unsigned i = 0; i != detectionModules.size(); ++i) {
+		if (detectionModules[i]->getState() == DetectMod::Running) {
+			ret.push_back(detectionModules[i]->getFileName() + " " 
+				      + detectionModules[i]->getArgs()[0]);
+		}
+	}
+	return ret;
+}
+#endif

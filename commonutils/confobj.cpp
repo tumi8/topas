@@ -201,7 +201,7 @@ std::string XMLConfObj::toString()
 	xmlIndentTreeOutput = 1;
         xmlKeepBlanksDefault(0);
         xmlBufferPtr xmlBufPtr = xmlBufferCreate();
-        xmlNodeDump(xmlBufPtr, documentTree, xmlDocGetRootElement(documentTree), 0, 1);
+        xmlNodeDump(xmlBufPtr, documentTree, currentLevel, 0, 1);
         std::string ret = std::string((char *)xmlBufPtr->content, xmlBufPtr->use);
         xmlBufferFree(xmlBufPtr);
 	return ret;

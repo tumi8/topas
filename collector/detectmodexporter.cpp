@@ -94,7 +94,6 @@ void DetectModExporter::notify(DetectMod* module)
 {
         static struct sembuf semaphore;
         /* write packet informations into the shared memory */
-        /* TODO: select proper queue and write queue number into  */
         nps->setFrom(ipfixPacketStore.getPacketStats(0).oldest);
         nps->setTo(ipfixPacketStore.getPacketStats(0).newest);
 
@@ -107,6 +106,7 @@ void DetectModExporter::notify(DetectMod* module)
                     "This could be responsible for killing %s in the future",
 		    strerror(errno), module->getFileName().c_str());
 	}
+	module->setBusyState(true);
 }
  
 int DetectModExporter::wait(DetectMod* module)
@@ -141,9 +141,10 @@ int DetectModExporter::wait(DetectMod* module)
                             "This could be responsible for killing %s in the future",
                 	    strerror(errno), module->getFileName().c_str());
                         return -1;
-                } else
+                } else {
                         wait = false;
-                
+                 	module->setBusyState(false);       
+                }
 	}
 
         return 0;

@@ -32,6 +32,7 @@
 
 
 DetectMod::DetectMod(const std::string& filename)
+	: busy(false)
 {
         this->filename = filename;
         /* Initial semahore key. We will try to find an unsed semaphore >= the initial value. */
@@ -47,7 +48,6 @@ DetectMod::~DetectMod()
 
 void DetectMod::run() 
 {
-	state = DetectMod::Running;
         /* try to get an unused semaphore key */
         while ((-1 == (semId = semget(semKey, 1, S_IRWXU | IPC_CREAT | IPC_EXCL))) && errno == EEXIST) {
                 ++semKey;
@@ -110,10 +110,13 @@ void DetectMod::run()
         if (-1 == close(tmpFd[1])) {
                 throw exceptions::DetectionModuleError(filename, "Could not close temporary pipe descriptor", strerror(errno));
         }
+
+	state = DetectMod::Running;
 }
 
 void DetectMod::stopModule() 
 {
+	state = DetectMod::Crashed;
         kill(pid, SIGTERM);
         if (-1 == semctl(semId,0,IPC_RMID,NULL)) {
                 msg(MSG_ERROR, "DetectMod: Error deleting semaphore to %s: %s", filename.c_str(), strerror(errno));

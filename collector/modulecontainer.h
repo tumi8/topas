@@ -98,7 +98,19 @@ public:
 	 */
 	void notifyAll(DetectModExporter* exporter);
 
+	/**
+	 * Checks all modules if they are busy. All found modules will be 
+	 * killed.
+	 */
+	void findAndKillSlowModule();
+
 #ifdef IDMEF_SUPPORT_ENABLED
+	/**
+	 * Get running modules.
+	 * @return Vector containing strings (fileName configFile).
+	 */
+	std::vector<std::string> getRunningModules();
+
         std::string topasID;
 #endif
 

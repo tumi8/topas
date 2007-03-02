@@ -5,7 +5,8 @@
 		<modules>
 			<module>
 			        <filename>../detectionmodules/examplemodules/third/examplemodule</filename>
-				<arg>test.xml</arg>
+                                <run>yes</run>
+				<configFile>test.xml</configFile>
 			</module>
 		</modules>
 		<transport_proto>UDP</transport_proto>

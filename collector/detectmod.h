@@ -126,6 +126,13 @@ public:
         void setArgs(const std::vector<std::string>& args);
 
 	/**
+	 * Returns list of arguments that where passed to the module
+	 * process.
+	 * @return List of arguments.
+	 */
+	std::vector<std::string> getArgs() { return arguments; }
+
+	/**
 	 * Sets module state
 	 * @param s new state
 	 */
@@ -137,6 +144,19 @@ public:
 	 * @return Module state.
 	 */
 	State getState();
+	
+	/**
+	 * Sets if module is busy
+	 * @param busy is module busy or not
+	 * @return void
+	 */
+	void setBusyState(bool busy) { this->busy = busy; }
+	
+	/**
+	 * Get busy state.
+	 * @return busy state
+	 */
+	bool getBusyState() { return busy; }
 
 private:
         pid_t pid;
@@ -144,7 +164,7 @@ private:
         key_t semKey;
         int semId;
         key_t shmKey;
-
+        bool busy;
         int pipeFd;
 
         std::vector<std::string> arguments;

@@ -35,38 +35,54 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
-class collector;
+class Collector;
 class DetectModExporter;
 
 
 /**
- * The manager maintains a list of detection modules, informs them about incoming IPFIX packets and deletes the new packets
- * after they were parsed by the modules. The class is also responsible for starting and controlling the detection modules.
+ * The manager maintains a list of detection modules, informs them about
+ * incoming IPFIX packets and deletes the new packets
+ * after they were parsed by the modules. The class is also responsible
+ * for starting and controlling the detection modules.
  */
-class manager{
+class Manager{
 public:
+	typedef enum {
+		start,
+		dontStart
+	} ModuleState;
+
         /**
          * Default constructor
          */
-        manager(DetectModExporter* exporter);
+        Manager(DetectModExporter* exporter);
 
         /**
          * Destructor
          */
-        ~manager();
+        ~Manager();
     
         /**
-         * Adds a detection module to the list maintained by the manager. The detection module will be started
+         * Adds a detection module to the list maintained by the manager.
+	 * The detection module will be started
          * and will be informed about new incoming IPFIX packets.
-         * @param module_path Path to the executable of the detection module. The file must have the execution bit set.
+         * @param module_path Path to the executable of the detection
+	 * module. The file must have the execution bit set.
+	 * @param modulePath Path to module executable
 	 * @param arguments Arguments that are passed to the module on startup.
+	 * @param s should a module be startet or not
          */
-        void addDetectionModule(const std::string& module_path, const std::vector<std::string>& arguments);
+        void addDetectionModule(const std::string& module_path,
+			        const std::string& configFile,
+			        std::vector<std::string>& arguments,
+				ModuleState s);
 
         
         /**
-         * The manager is informed by the collector about the arrival of new packets via this function.
+         * The manager is informed by the collector about the arrival of 
+	 * new packets via this function.
          */
         void newPacket();
 
@@ -83,25 +99,30 @@ public:
 
 
         /**
-         * This method forks the detection modules, and sets up communication devices to them (shared memory and semaphores)
+         * This method forks the detection modules, and sets up
+	 * communication devices to them (shared memory and semaphores)
          */
         void startModules();
 
         /**
-         * Informs manager that the system is going to be shut down soon. After calling this mehtod, the manager won't care about
-         * dying detection modules any more.
+         * Informs manager that the system is going to be shut down 
+	 * soon. After calling this mehtod, the manager won't care
+	 * about dying detection modules any more.
          */
         static void prepareShutdown();
 
 	/**
-	 * Kills all running modules. Call @c prepareShutdown() if you want to surpress the restarting algorithm.
+	 * Kills all running modules. Call @c prepareShutdown() if you
+	 * want to surpress the restarting algorithm.
 	 */
 	void killModules();
 
 
 private:
-        static ModuleContainer detectionModules;
+        static ModuleContainer runningModules;
         static DetectModExporter* exporter;
+
+	std::map<std::string, std::vector<std::string> > availableModules;
 
         unsigned killTime;
         static bool restartOnCrash;
@@ -127,16 +148,22 @@ private:
          *               You have to delete the memory allocated for the object.
          */
         void update(XMLConfObj* xmlObj);
+
+	/**
+	 * Sends control messages to module manager
+	 */
+	void sendControlMessage(const std::string& message);
 #endif
 
 protected:
         /**
-         * The main manager thread function. This function may only be started by the @c collector
+         * The main manager thread function. This function may only be
+	 * started by the @c collector
          */
         static void* run(void*);
         
         /** @c collector */
-        friend class collector;
+        friend class Collector;
 
 #ifdef IDMEF_SUPPORT_ENABLED
         /** TOPAS id for XMLBlaster */
