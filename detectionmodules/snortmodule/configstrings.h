@@ -25,14 +25,16 @@ namespace ConfigStrings
 	static const bool 	 DEFAULTENABLE = true;
 	static const std::string WRAPPERPIPE = "fifo";
 	static const std::string DEFAULTWRAPPERPIPE = "/tmp/xmlWrapper_fifo";
-	static const std::string TOPIC ="topic";
-	static const std::string DEFAULTTOPIC ="snortmodule";
-	static const std::string GET_SNORT_CONFIG ="getSnortConfig";
-	static const std::string UPDATE_SNORT_CONFIG ="updateSnortConfig";
-	static const std::string GET_SNORT_RULE_FILE ="getSnortRuleFile";
-	static const std::string UPDATE_SNORT_RULE_FILE ="updateSnortRuleFile";
-	static const std::string APPEND_SNORT_RULE_FILE ="appendSnortRuleFile";
-	static const std::string CLEAR_SNORT_RULE_FILE ="clearSnortRuleFile";
+	static const std::string TOPIC = "topic";
+	static const std::string DEFAULTTOPIC = "snortmodule";
+	static const std::string ANALYZERID = "analyzerid=";
+	static const std::string MANUFACTURER = "manufacturer=";
+	static const std::string GET_SNORT_CONFIG = "getSnortConfig";
+	static const std::string UPDATE_SNORT_CONFIG = "updateSnortConfig";
+	static const std::string GET_SNORT_RULE_FILE = "getSnortRuleFile";
+	static const std::string UPDATE_SNORT_RULE_FILE = "updateSnortRuleFile";
+	static const std::string APPEND_SNORT_RULE_FILE = "appendSnortRuleFile";
+	static const std::string CLEAR_SNORT_RULE_FILE = "clearSnortRuleFile";
 
 };
 

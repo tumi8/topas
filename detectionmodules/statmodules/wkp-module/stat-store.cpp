@@ -43,10 +43,14 @@ StatStore::~StatStore() {
 
 }
 
-bool StatStore::recordStart(SourceID) {
+bool StatStore::recordStart(SourceID sourceId) {
 
   if (BeginMonitoring != true)
     return false;
+
+  if (find(accept_source_ids->begin(),accept_source_ids->end(),(int)sourceId)==accept_source_ids->end()){
+    return false;
+  }
 
   gotSourceIP = gotDestIP = false;
   gotProtocol = false;
@@ -60,7 +64,7 @@ bool StatStore::recordStart(SourceID) {
 
 }
 
-
+std::vector<int>* StatStore::accept_source_ids = NULL;
 void StatStore::addFieldData(int id, byte * fieldData, int fieldDataLength, EnterpriseNo eid) {
 
   // we subscribed to (see Stat::init()):

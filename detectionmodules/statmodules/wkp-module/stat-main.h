@@ -134,6 +134,9 @@ class Stat : public DetectionBase<StatStore> {
 
  private:
 
+  // signal handlers
+  static void sigTerm(int);
+  static void sigInt(int);
 
   // this function is called by the Stat constructor, its job is to extract
   // user's preferences and test parameters from the XML config file:
@@ -142,6 +145,7 @@ class Stat : public DetectionBase<StatStore> {
   // as the init function is really huge, we divide it into tasks:
   // those related to the user's preferences regarding the module...
   void init_output_file(ConfObj *);
+  void init_accept_source_ids(ConfObj *);
   void init_alarm_time(ConfObj *);
   void init_warning_verbosity(ConfObj *);
   void init_output_verbosity(ConfObj *);
@@ -192,6 +196,13 @@ class Stat : public DetectionBase<StatStore> {
   // here is the sample container:
   std::map<DirectedIpAddress, Samples> Records;
 
+  // source id's to accept
+  std::vector<int> accept_source_ids;	
+
+#ifdef IDMEF_SUPPORT_ENABLED
+  // IDMEF-Message
+  IdmefMessage idmefMessage;
+#endif
 
   // user's preferences (defined in the XML config file):
   std::ofstream outfile;

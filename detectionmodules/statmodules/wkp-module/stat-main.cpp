@@ -18,6 +18,8 @@
 /*                                                                        */
 /**************************************************************************/
 
+#include<signal.h>
+
 #include "stat-main.h"
 #include "shared.h"
 #include "wmw-test.h"
@@ -131,6 +133,14 @@ void DirectedIpAddress::remanent_mask (const byte m[4]) {
 Stat::Stat(const std::string & configfile)
   : DetectionBase<StatStore>(configfile) {
 
+  // signal handlers
+  if (signal(SIGTERM, sigTerm) == SIG_ERR) {
+    msg(MSG_ERROR, "wkp-module: Couldn't install signal handler for SIGTERM.\n ");
+  } 
+  if (signal(SIGINT, sigInt) == SIG_ERR) {
+    msg(MSG_ERROR, "wkp-module: Couldn't install signal handler for SIGINT.\n ");
+  } 	
+
   // lock, will be unlocked at the end of init() (cf. StatStore class header):
   StatStore::setBeginMonitoring () = false;
 
@@ -162,6 +172,9 @@ void Stat::init(const std::string & configfile) {
 
   // extracting output file's name
   init_output_file(config);
+
+  // extracting source id's to accept
+  init_accept_source_ids(config);
 
   // extracting alarm_time
   // (that means that the test() methode will be called
@@ -229,7 +242,7 @@ void Stat::update(XMLConfObj* xmlObj)
 {
 	std::cout << "Update received!" << std::endl;
 	if (xmlObj->nodeExists("stop")) {
-		std::cout << "-> stoping module..." << std::endl;
+		std::cout << "-> stopping module..." << std::endl;
 		stop();
 	} else if (xmlObj->nodeExists("restart")) {
 		std::cout << "-> restarting module..." << std::endl;
@@ -255,18 +268,54 @@ void Stat::init_output_file(ConfObj * config) {
 		<< config->getValue("preferences", "output_file") << ". "
 		<< "Check if you have enough rights to create or write to it. "
 		<< "Exiting.\n";
-      exit(-1);
+      exit(0);
     }
   }
 
   else {
     std::cerr <<"Error! No output_file parameter defined in XML config file!\n"
 	      <<"Please give one and restart. Exiting.\n";
-    exit(-1);
+    exit(0);
   }
 
   return;
 
+}
+
+void Stat::init_accept_source_ids(ConfObj * config) {
+	if (NULL != config->getValue("preferences", "accept_source_ids")) {
+		std::string str = config->getValue("preferences", "accept_source_ids");
+		unsigned res, IDEnd = 0, last = 0;
+		bool more = true;
+		std::string temp;
+		do {
+			res = str.find(',', last);
+			if (res == std::string::npos) {
+				more = false;
+				res = str.size();
+			}
+			if (IDEnd == 0) {
+				IDEnd = res;
+				if (IDEnd > 0) {
+					temp = std::string(str.begin(), str.begin() + res);
+					accept_source_ids.push_back(atoi(temp.c_str()));
+				}
+			} else {
+				temp = std::string(str.begin() + last, str.begin() + res);
+				if (!temp.empty()) {accept_source_ids.push_back(atoi(temp.c_str())); }
+			}
+			last = res + 1; // one past last space
+		} while (more);
+		StatStore::accept_source_ids = &accept_source_ids; 
+	}
+	if (accept_source_ids.size() == 0) {
+		std::stringstream Error;
+		Error << "Error! No accept_source_ids parameter defined in XML config file!\n"
+		      << "Please give one and restart. Exiting.\n";
+		std::cerr << Error.str();
+		outfile << Error.str() << std::flush;
+		exit(0);
+	}
 }
 
 void Stat::init_alarm_time(ConfObj * config) {
@@ -283,7 +332,7 @@ void Stat::init_alarm_time(ConfObj * config) {
 	  << "Please give one and restart. Exiting.\n";
     std::cerr << Error.str();
     outfile << Error.str() << std::flush;
-    exit(-1);
+    exit(0);
   }
 
   return;
@@ -311,7 +360,7 @@ void Stat::init_warning_verbosity(ConfObj * config) {
     else {
       std::cerr << Warning.str() << Usage.str() << "Exiting.\n";
       outfile << Warning.str() << Usage.str() << "Exiting.\n" << std::flush;
-      exit(-1);
+      exit(0);
     }
   }
 
@@ -350,7 +399,7 @@ void Stat::init_output_verbosity(ConfObj * config) {
       std::cerr << Warning.str() << Usage.str() << "Exiting.\n";
       if (warning_verbosity==1)
 	outfile << Warning.str() << Usage.str() << "Exiting." << std::endl;
-      exit(-1);
+      exit(0);
     }
   }
 
@@ -452,7 +501,7 @@ void Stat::init_monitored_values(ConfObj * config) {
       std::cerr << Warning1.str() << Usage.str() << "Exiting.\n";
       if (warning_verbosity==1)
 	outfile << Warning1.str() << Usage.str() << "Exiting." << std::endl;
-      exit(-1);
+      exit(0);
     }
 
   }
@@ -460,7 +509,7 @@ void Stat::init_monitored_values(ConfObj * config) {
     std::cerr << Warning2.str() << Usage.str() << "Exiting.\n";
     if (warning_verbosity==1)
       outfile << Warning2.str() << Usage.str() << "Exiting." << std::endl;
-    exit(-1);
+    exit(0);
   }
 
   // extracting monitored values, 2/2
@@ -581,7 +630,7 @@ void Stat::init_protocols(ConfObj * config) {
 	  outfile << "Warning! An unknown protocol (" << protocol
 		  << ") was provided!\n"
 		  << Usage.str() << "Exiting." << std::endl;
-	exit(-1);
+	exit(0);
       }
 
     }
@@ -700,7 +749,7 @@ void Stat::init_netmask(ConfObj * config) {
     std::cerr << Warning.str() << Usage.str() << "Exiting.\n";
     if (warning_verbosity==1)
       outfile << Warning.str() << Usage.str() << "Exiting." << std::endl;
-    exit(-1);
+    exit(0);
   }
 
   // if everything is OK:
@@ -810,7 +859,7 @@ void Stat::init_ip_addresses(ConfObj * config) {
       std::cerr << Error.str();
       if (warning_verbosity==1)
 	outfile << Error.str() << std::flush;
-      exit(-1);
+      exit(0);
     }
 
     else {
@@ -1044,7 +1093,7 @@ void Stat::init_significance_level(ConfObj * config) {
       std::cerr << Warning.str();
       if (warning_verbosity==1)
 	outfile << Warning.str() << std::flush;
-      exit(-1);
+      exit(0);
     }
   }
 
@@ -1066,6 +1115,10 @@ void Stat::init_significance_level(ConfObj * config) {
 
 
 void Stat::test(StatStore * store) {
+
+#ifdef IDMEF_SUPPORT_ENABLED
+        idmefMessage = getNewIdmefMessage("wkp-module", "statistical anomaly detection");
+#endif
 
   outfile << "########## Stat::test(...)-call number: " << test_counter
 	  << " ##########" << std::endl;
@@ -1255,7 +1308,7 @@ std::map<DirectedIpAddress,int64_t> Stat::extract_data (StatStore * store) {
 	      << "but has forgotten to ensure its support "
 	      << "in the Stat::test(StatStore * store) function.\n"
 	      << "I'm sorry. Please correct this error. Exiting...\n";
-    exit(-1);
+    exit(0);
   }
 
   return result;
@@ -1556,6 +1609,11 @@ void Stat::stat_test_wmw (std::list<int64_t> & sample_old,
 	std::cout << "  ATTACK! ATTACK! ATTACK!\n"
 		  << "  Wilcoxon-Mann-Whitney test says we're under attack!\n"
 		  << "  ALARM! ALARM! Women und children first!" << std::endl;
+#ifdef IDMEF_SUPPORT_ENABLED
+	idmefMessage.setAnalyzerAttr("", "", "wmw-test", "");
+	sendIdmefMessage("DDoS", idmefMessage);
+	idmefMessage = getNewIdmefMessage();
+#endif
       }
       last_wmw_test_was_an_attack = true;
     }
@@ -1613,6 +1671,11 @@ void Stat::stat_test_ks (std::list<int64_t> & sample_old,
 	std::cout << "  ATTACK! ATTACK! ATTACK!\n"
 		  << "  Kolmogorov-Smirnov test says we're under attack!\n"
 		  << "  ALARM! ALARM! Women und children first!" << std::endl;
+#ifdef IDMEF_SUPPORT_ENABLED
+	idmefMessage.setAnalyzerAttr("", "", "ks-test", "");
+	sendIdmefMessage("DDoS", idmefMessage);
+	idmefMessage = getNewIdmefMessage();
+#endif
       }
       last_ks_test_was_an_attack = true;
     }
@@ -1670,6 +1733,11 @@ void Stat::stat_test_pcs (std::list<int64_t> & sample_old,
 	std::cout << "  ATTACK! ATTACK! ATTACK!\n"
 		  << "  Pearson chi-square test says we're under attack!\n"
 		  << "  ALARM! ALARM! Women und children first!" << std::endl;
+#ifdef IDMEF_SUPPORT_ENABLED
+	idmefMessage.setAnalyzerAttr("", "", "pcs-test", "");
+	sendIdmefMessage("DDoS", idmefMessage);
+	idmefMessage = getNewIdmefMessage();
+#endif
       }
       last_pcs_test_was_an_attack = true;
     }
@@ -1696,4 +1764,14 @@ void Stat::stat_test_pcs (std::list<int64_t> & sample_old,
   }
 
   return;
+}
+
+void Stat::sigTerm(int signum)
+{
+	stop();
+}
+
+void Stat::sigInt(int signum)
+{
+	stop();
 }

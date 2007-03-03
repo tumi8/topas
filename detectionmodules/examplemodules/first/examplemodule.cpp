@@ -37,6 +37,13 @@ ExampleModule::ExampleModule(const std::string& configfile)
 
 void ExampleModule::init()
 {
+	/* signal handlers */
+	if (signal(SIGTERM, sigTerm) == SIG_ERR) {
+		msg(MSG_ERROR, "Couldn't install signal handler for SIGTERM.\n ");
+        } 
+	if (signal(SIGINT, sigInt) == SIG_ERR) {
+		msg(MSG_ERROR, "Couldn't install signal handler for SIGINT.\n ");
+        } 	
         /* we want to receive all destination ip address fields */
         subscribeTypeId(IPFIX_TYPEID_destinationIPv4Address);
 
@@ -96,7 +103,7 @@ void ExampleModule::test(ExampleDataStorage* store)
                 << " records: " << std::endl;
 
 #ifdef IDMEF_SUPPORT_ENABLED
-        IdmefMessage& idmefMessage = getNewIdmefMessage("First example module", "Example classification");
+        IdmefMessage& idmefMessage = getNewIdmefMessage("first", "Example classification");
 #endif
         // print ip address and counter value if counter value is greater than threshold
         for (std::map<IpAddress, int>::const_iterator i = counter.begin();
@@ -122,4 +129,14 @@ void ExampleModule::test(ExampleDataStorage* store)
 
         /* don't forget to free the store-object */
         delete store;
+}
+
+void ExampleModule::sigTerm(int signum)
+{
+	stop();
+}
+
+void ExampleModule::sigInt(int signum)
+{
+	stop();
 }

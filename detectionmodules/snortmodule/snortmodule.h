@@ -105,6 +105,8 @@ private:
 		pthread_t Id;
 		void * module;
 		std::string topic;
+		std::string analyzerid;
+		std::string manufacturer;
 	};
 
 	static wrapperConfig_t wrapperConfig;
@@ -118,8 +120,8 @@ private:
        
 
 	/**
-	* Signal handlers for SIGCHLD
-	*/
+	 * Signal handlers for SIGCHLD
+	 */
 	
 	static void sigChild(int);
 	static void sigTerm(int);

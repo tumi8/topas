@@ -64,6 +64,14 @@ Manager::~Manager()
 #ifdef IDMEF_SUPPORT_ENABLED
         msg(MSG_DEBUG, "Disconnecting from xmlBlaster servers");
         for (unsigned i = 0; i != commObjs.size(); ++i) {
+		std::string managerID = (*xmlBlasters[i].getElement()).getProperty().getProperty(config_space::MANAGER_ID);
+		if (managerID == "") {
+			msg(MSG_INFO, ("Using default " + config_space::MANAGER_ID + " \""
+				       + config_space::DEFAULT_MANAGER_ID + "\"").c_str());
+			managerID = config_space::DEFAULT_MANAGER_ID;
+		}
+		commObjs[i]->erase(config_space::TOPAS + "-" + topasID);
+		commObjs[i]->publish("<exit oid='" + config_space::TOPAS + "-" + topasID + "'/>", managerID);
                 commObjs[i]->disconnect();
                 delete commObjs[i];
         }

@@ -19,6 +19,7 @@
 #ifndef _EXAMPLEMODULE_H_
 #define _EXAMPLEMODULE_H_
 
+#include<signal.h>
 
 #include "exampledatastorage.h"
 
@@ -64,6 +65,12 @@ private:
         int threshold;
 
         std::ofstream outfile;
+	
+	/**
+	 * Signal handlers
+	 */
+	static void sigTerm(int);
+	static void sigInt(int);	
 
         void init();
 };

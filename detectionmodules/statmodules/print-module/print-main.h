@@ -21,6 +21,8 @@
 #ifndef _PRINT_MAIN_H_
 #define _PRINT_MAIN_H_
 
+#include<signal.h>
+
 #include "print-store.h"
 
 #include <detectionbase.h>
@@ -62,6 +64,13 @@ class Print : public DetectionBase< PrintStore,
  private:
 
   std::ofstream outfile;
+	
+	/**
+	 * Signal handlers
+	 */
+	static void sigTerm(int);
+	static void sigInt(int);
+
   void init(const std::string & configfile);
 
 };

@@ -28,6 +28,14 @@ Print::Print(const std::string & configfile)
 
 void Print::init(const std::string & configfile) {
 
+	/* signal handlers */
+	if (signal(SIGTERM, sigTerm) == SIG_ERR) {
+		msg(MSG_ERROR, "Couldn't install signal handler for SIGTERM.\n ");
+        } 
+	if (signal(SIGINT, sigInt) == SIG_ERR) {
+		msg(MSG_ERROR, "Couldn't install signal handler for SIGINT.\n ");
+        } 	
+
   ConfObj * config;
   config = new ConfObj(configfile);
 
@@ -81,7 +89,7 @@ void Print::update(XMLConfObj* xmlObj)
 {
 	std::cout << "Update received!" << std::endl;
 	if (xmlObj->nodeExists("stop")) {
-		std::cout << "-> stoping module..." << std::endl;
+		std::cout << "-> stopping module..." << std::endl;
 		stop();
 	} else if (xmlObj->nodeExists("restart")) {
 		std::cout << "-> restarting module..." << std::endl;
@@ -181,4 +189,14 @@ void Print::test(PrintStore * store) {
   /* don't forget to free the store-object */
   delete store;
 
+}
+
+void Print::sigTerm(int signum)
+{
+	stop();
+}
+
+void Print::sigInt(int signum)
+{
+	stop();
 }

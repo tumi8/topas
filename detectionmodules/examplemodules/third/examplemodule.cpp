@@ -37,6 +37,13 @@ ExampleModule::ExampleModule(const std::string& configfile)
 
 void ExampleModule::init()
 {
+	/* signal handlers */
+	if (signal(SIGTERM, sigTerm) == SIG_ERR) {
+		msg(MSG_ERROR, "Couldn't install signal handler for SIGTERM.\n ");
+        } 
+	if (signal(SIGINT, sigInt) == SIG_ERR) {
+		msg(MSG_ERROR, "Couldn't install signal handler for SIGINT.\n ");
+        } 	
         /* we want to receive all destination ip address fields */
         subscribeTypeId(IPFIX_TYPEID_destinationIPv4Address);
 	subscribeTypeId(IPFIX_TYPEID_sourceIPv4Address);
@@ -69,7 +76,7 @@ void ExampleModule::update(XMLConfObj* xmlObj)
 {
 	std::cout << "Update received!" << std::endl;
 	if (xmlObj->nodeExists("stop")) {
-		std::cout << "-> stoping module..." << std::endl;
+		std::cout << "-> stopping module..." << std::endl;
 		stop();
 	} else if (xmlObj->nodeExists("restart")) {
 		std::cout << "-> restarting module..." << std::endl;
@@ -106,4 +113,14 @@ void ExampleModule::test(ExampleDataStorage* store)
 
         /* don't forget to free the store-object */
         delete store;
+}
+
+void ExampleModule::sigTerm(int signum)
+{
+	stop();
+}
+
+void ExampleModule::sigInt(int signum)
+{
+	stop();
 }

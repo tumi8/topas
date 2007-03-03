@@ -604,7 +604,6 @@ void IdmefMessage::publish(XmlBlasterCommObject& comm, const std::string& topic)
         int r = xmlNodeDump(xmlBufPtr, idmefTree, xmlDocGetRootElement(idmefTree), 0, 1);
         comm.publish ((char *) xmlBufPtr->content, topic);
         xmlBufferFree (xmlBufPtr);
-        xmlCleanupParser();
 }
 
 

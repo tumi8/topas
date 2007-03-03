@@ -161,8 +161,18 @@ class DetectionBase
         virtual ~DetectionBase() 
         {
 #ifdef IDMEF_SUPPORT_ENABLED
-                delete currentMessage;
                 for (unsigned i = 0; i != commObjs.size(); ++i) {
+			std::string managerID = (*xmlBlasters[i].getElement()).getProperty().getProperty(config_space::MANAGER_ID);
+			if (managerID == "") {
+                                msg(MSG_INFO, ("Using default " + config_space::MANAGER_ID + " \""
+                                               + config_space::DEFAULT_MANAGER_ID + "\"").c_str());
+                                managerID = config_space::DEFAULT_MANAGER_ID;
+                        }
+			// erase subsribed topic
+			commObjs[i]->erase(analyzerName + "-" + analyzerId);
+			// notify manager about exiting
+			commObjs[i]->publish("<exit oid='" + analyzerName + "-" + analyzerId + "'/>", managerID);
+			// disconnect
                         commObjs[i]->disconnect();
 			delete commObjs[i];
                 }
@@ -257,11 +267,14 @@ class DetectionBase
  				for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
 					std::string ret = dbase->commObjs[i]->getUpdateMessage();
 					if (ret != "") {
-						XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
-						if (NULL != confObj) {
+						try {
+							XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
 							dbase->update(confObj);
+							delete confObj;
+						} catch (const exceptions::XMLException &e) {
+							msg(MSG_ERROR, e.what());
+							dbase->sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
 						}
-                                                delete confObj;
 					}
  				}				
 #endif
@@ -277,11 +290,14 @@ class DetectionBase
  				for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
 					std::string ret = dbase->commObjs[i]->getUpdateMessage();
 					if (ret != "") {
-						XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
-						if (NULL != confObj) {
+						try {
+							XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
 							dbase->update(confObj);
-						}
-                                                delete confObj;
+							delete confObj;
+						} catch (const exceptions::XMLException &e) {
+							msg(MSG_ERROR, e.what());
+							dbase->sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
+						}						
 					}
  				}				
 #endif
@@ -408,7 +424,6 @@ class DetectionBase
         }
 
 protected:
-	
 	/** 
          * Register function. This function should be called 
 	 * in the init() function of each detection module.
@@ -417,9 +432,10 @@ protected:
          */
 	void registerModule(const std::string& analyzerName)
 	{
+		this->analyzerName = analyzerName;
 		/* send <Heartbeat> message to all xmlBlaster servers and subscribe for update messages */
-		currentMessage = new IdmefMessage(analyzerName, analyzerId, classification, IdmefMessage::HEARTBEAT);
-		currentMessage->setAnalyzerAttr("", topasID, "", "");
+		IdmefMessage* heartbeatMessage = new IdmefMessage(analyzerName, analyzerId, classification, IdmefMessage::HEARTBEAT);
+		heartbeatMessage->setAnalyzerAttr("", topasID, "", "");
 		for (unsigned i = 0; i != commObjs.size(); ++i) {
 			std::string managerID = (*xmlBlasters[i].getElement()).getProperty().getProperty(config_space::MANAGER_ID);
 			if (managerID == "") {
@@ -427,10 +443,28 @@ protected:
 					       + config_space::DEFAULT_MANAGER_ID + "\"").c_str());
 				managerID = config_space::DEFAULT_MANAGER_ID;
 			}
-			currentMessage->publish(*commObjs[i], managerID);
+			heartbeatMessage->publish(*commObjs[i], managerID);
 			commObjs[i]->subscribe(analyzerName + "-" + analyzerId, XmlBlasterCommObject::MESSAGE);
 		}
+		delete heartbeatMessage;
 	}
+
+	/**
+	 * Returns topasID.
+	 */
+	std::string getTopasId()
+	{
+		return topasID;
+	}
+	
+	/**
+	 * Returns moduleID.
+	 */
+	std::string getModuleId()
+	{
+		return analyzerName + "-" + analyzerId;
+	}
+
 	/** 
          * Update function. This function will be called, whenever a message
          * for subscribed key is received from xmlBlaster.
@@ -442,15 +476,13 @@ protected:
 
 #endif // IDMEF_SUPPORT_ENABLED
 
-protected:
-
 	/**
 	 * Restarts the module.
 	 */
 	static void restart() {
 		state = RESTART;
 	}
-
+	
 	/**
 	 * Stops the module.
 	 */
@@ -459,8 +491,8 @@ protected:
 	}
 
 
-
- private:
+	
+private:
 #ifdef IDMEF_SUPPORT_ENABLED
         IdmefMessage* currentMessage;
         std::string analyzerName, analyzerId, classification;
@@ -492,7 +524,6 @@ protected:
         {
 		testMutex.unlock();
         }
-
 };
 
 
@@ -503,7 +534,7 @@ template<class DataStorage, class InputPolicy>
 InputPolicy DetectionBase<DataStorage, InputPolicy>::inputPolicy;
 template<class DataStorage, class InputPolicy>
 volatile typename DetectionBase<DataStorage, InputPolicy>::State
-        DetectionBase<DataStorage, InputPolicy>::state = 
-                (typename DetectionBase<DataStorage, InputPolicy>::State)0;
+	DetectionBase<DataStorage, InputPolicy>::state = 
+		(typename DetectionBase<DataStorage, InputPolicy>::State)0;
 
 #endif

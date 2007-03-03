@@ -67,11 +67,12 @@ class StatStore : public DataStore {
   ~StatStore();
   // it is ~StatStore which updates PreviousData (PreviousData = Data;)
 
-  bool recordStart(SourceID);
+  bool recordStart(SourceID sourceId);
   void recordEnd();
   void addFieldData(int id, byte * fieldData, int fieldDataLength,
 		    EnterpriseNo eid = 0);
 
+  static std::vector<int>* accept_source_ids;
   std::map<IpAddress,Info> getData() const {return Data;}
   std::map<IpAddress,Info> getPreviousData() const {return PreviousData;}
 
