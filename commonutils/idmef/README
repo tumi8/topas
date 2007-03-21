@@ -4,7 +4,7 @@
 The IdmefMessage class creates a IDMEF-Message with/without the DIADEM extension
 and publishes it to the xmlBlaster server.
 
-1.) Create a "empty" IDMEF-Message:
+1.) Create an "empty" IDMEF-Message:
 
  IdmefMessage message("my-detection-module", "statistical anomaly detection");
  or
@@ -202,41 +202,6 @@ Output:
  </AdditionalData>
  </Alert>
  </IDMEF-Message>
-
-7.) publish the IDMEF-message to the xmlBlaster server under given topic
-
-	/* connect to the xmlBlaster */
-        communicationObject *comm = NULL;
-        comm = new xmlBlasterCommObject(argc, argv, NULL, "idmefblaster");
-        if (comm == NULL) {
-                std::cerr << "Cannot initialize xmlBlaster." << std::endl
-                          << "Make sure, the xmlBlaster server is up and running." << std::endl;
-                exit (-1);
-        }
-
-        int r;
-        r = (*comm).connect();
-        if (r != 0) {
-                std::cerr << "Cannot connect to xmlBlaster!" << std::endl;
-                exit (-1);
-        }
-
-	/* publish the IDMEF-Message */
-        message.publish(comm, "DDoS");
-
-(Note:
-
-You don't have to care about connecting to xmlBlaster sites within your detection
-modules.
-This will be done by the detection module base class automatically. Use the the
-member function
-
-void sendIdmefMessage("your topic", message);
-
-See ipfix-collector/detectionmodules/examplemodules/README for more information on
-this topic
-)
-
 
 As already mentioned above you find the whole function definitions in "idmefmessage.h".
 Doxygen gives also a very good overview over the IdmefMessage class.

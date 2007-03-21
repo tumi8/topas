@@ -164,7 +164,7 @@ exports that field :))
 Exporting results:
 
 If you want to export your results via the buildin IDMEF message facility,
-you need to specify the xmlBlasters your messeges should be exported to.
+you need to specify the xmlBlasters your messages should be exported to.
 This is done via a configuration file. You can specify that configuration
 file by passing it's filename to the constructor
 
@@ -178,15 +178,26 @@ A sample configuration file could look like this:
 
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-	<XMLBLASTER>
-		<export_to>127.0.0.1:7607</export_to>
-	</XMLBLASTER>
+	<xmlBlasters>
+		<xmlBlaster>
+		  <prop>managerID module-manager</prop>
+		  <prop>plugin/socket/hostname 127.0.0.1</prop>
+		  <prop>plugin/socket/port 7607</prop>
+		  <prop>queue/connection/type RAM</prop>
+		  <prop>xmlBlaster/logging/configFileName log4cplus.properties</prop>
+		  <prop>log4cplus.rootLogger WARN, STDOUT</prop>
+		</xmlBlaster>
+	</xmlBlasters>
 </configuration>
 				
 ------------------------ [ snap ] ------------------------------
 
 This means that your detection module exports its IDMEF messages to host
-127.0.0.1 on port 7607.
+127.0.0.1 on port 7607 with topic "module-manager". You can use several
+xmlBlaster instances at once, just add another <xmlBlaster>...</xmlBlaster>
+tag. If you need more specific xmlBlaster client settings, visit
+http://www.xmlblaster.org/xmlBlaster/doc/requirements/requirement.html
+and add new <prop>NAME VALUE</prop> tags.
 
 Attention:
 The used transport protocol is TCP. If the detection module base class
@@ -201,9 +212,7 @@ IdmefMessage& message = getNewIdmefMessage("MyDetectionmoduleName",
                                            "MyClassificationName");
 
 Build your message by using the IdmefMessage member functions. See the doxygen
-documentation or the file xxxxxx (by the time of writing this document the
-IDMEF readme document isn't finished. if you can read this hint, we forgot to
-update the readme) for more information.
+documentation or the file commonutils/idmef/README for more information.
 
 After inserting all inforamtions, you can send your message by calling:
 
@@ -220,6 +229,36 @@ call are stored in the base class and are inserted into the message when
 calling getNewIdmefMessage() without parameters.
 If you never call getNewIdmefMessage(const std::string&, const std::string&),
 your messages will carry an empty name and an empty classification field)
+
+
+Dynamic module configuration:
+
+If you want to (re-)configure your module dynamically, call registerModule() first:
+
+registerModule("MyDetectionmoduleName");
+
+This method connects to xmlBlaster and subscribes the module for update messages.
+Each time an update message is received, the update(XMLConfObj* xmlObj) method is called:
+
+void MyDetectionModuleClass::update(XMLConfObj* xmlObj)
+{
+	std::cout << "Update received!" << std::endl;
+	if (xmlObj->nodeExists("stop")) {
+		std::cout << "-> stoping module..." << std::endl;
+		stop();
+	} else if (xmlObj->nodeExists("restart")) {
+		std::cout << "-> restarting module..." << std::endl;
+		restart();
+
+	} else if (xmlObj->nodeExists("config")) {
+		std::cout << "-> updating module configuration..." << std::endl;
+	} else { // add your commands here
+		std::cout << "-> unknown operation" << std::endl;
+	}
+}
+
+stop() and restart() methods are implemented in DetectionBase,
+add new functionality yourself, if needed.
 
 
 				Step Three

@@ -11,6 +11,7 @@
 		</xmlBlaster>
 	</xmlBlasters>
 	<preferences>
+	        <accept_source_ids>4711</accept_source_ids>
 	        <output_file>wkp.output</output_file>
 		<alarm_time>5</alarm_time>
 		<warning_verbosity>1</warning_verbosity>
