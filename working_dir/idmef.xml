@@ -3,8 +3,10 @@
   	<xmlBlasters>
 		<xmlBlaster>
 		  <prop>managerID module-manager</prop>
+<!--
 		  <prop>plugin/socket/hostname 127.0.0.1</prop>
 		  <prop>plugin/socket/port 7607</prop>
+-->
 		  <prop>queue/connection/type RAM</prop>
 		  <prop>xmlBlaster/logging/configFileName log4cplus.properties</prop>
 		  <prop>log4cplus.rootLogger WARN, STDOUT</prop>
