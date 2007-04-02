@@ -119,7 +119,7 @@ void ExampleModule::test(ExampleDataStorage* store)
                         tmp = sstream.str();
                         idmefMessage.createTargetNode("Don't know what decoy is!!!!", "ipv4-addr",
                                                       i->first.toString(), "0.0.0.0");
-                        idmefMessage.createExtStatisticsNode("0", tmp, "0", "0");
+                        idmefMessage.createExtStatisticsNode("0", "0", tmp, "0", "0", "0");
                         sendIdmefMessage("Dummy", idmefMessage);
                         idmefMessage = getNewIdmefMessage();
 #endif //IDMEF_SUPPORT_ENABLED

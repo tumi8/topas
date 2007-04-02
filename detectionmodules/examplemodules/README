@@ -193,9 +193,11 @@ A sample configuration file could look like this:
 ------------------------ [ snap ] ------------------------------
 
 This means that your detection module exports its IDMEF messages to host
-127.0.0.1 on port 7607 with topic "module-manager". You can use several
-xmlBlaster instances at once, just add another <xmlBlaster>...</xmlBlaster>
-tag. If you need more specific xmlBlaster client settings, visit
+127.0.0.1 on port 7607 with topic "module-manager". If hostname and port
+are omitted, the default values (name of localhost and port 7607) are used.
+You can use several xmlBlaster instances at once, just add another 
+<xmlBlaster>...</xmlBlaster> tag. If you need more specific xmlBlaster 
+client settings, visit
 http://www.xmlblaster.org/xmlBlaster/doc/requirements/requirement.html
 and add new <prop>NAME VALUE</prop> tags.
 

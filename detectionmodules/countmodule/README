@@ -1,0 +1,67 @@
+Countmodule
+
+AUTHOR: 
+Gerhard Muenz
+
+PURPOSE:
+Count
+  - number of octets,
+  - number of packets, and
+  - number of distinct flows
+per
+  - source address
+  - destination address
+  - protocol + source port
+  - protocol + destination port
+and report if
+  - number of octets >= octet_threshold, or
+  - number of packets >= packet_threshold, or
+  - number of distinct flows >= flow_threshold.
+The number of distinct flows (cardinality) is determined with help of
+a Bloom filter (cf. [1]). Values may be to low due to Bloom filter
+collisions.
+
+INPUT:
+IP-5-tuple records with octet and packet counts
+
+CONFIGURATION:
+<configuration>
+    <preferences>
+	<output_file>countmodule.txt</output_file>  // default: countmodule.txt
+	<alarm_time>12</alarm_time>  // default: 10 
+	<octet_threshold>1000</octet_threshold>  // default: 0
+	<packet_threshold>5</packet_threshold>  // default: 0
+	<flow_threshold>3</flow_threshold>  // default: 0
+	<verbose />  // activates stdout output if present and not "false"
+	<accepted_source_ids>1234,4566</accepted_source_ids>  // "all" if not present
+    </preferences>
+    <counting>
+	<bf_size>1000</bf_size>  // default: 1024
+	<bf_hashfunctions>3</bf_hashfunctions>  // default: 3
+	<count_per_src_ip />  // activates counts per src address if present and not "false"
+	<count_per_dst_ip />  // activates counts per dst address if present and not "false"
+	<count_per_src_port />  // activates counts per src port if present and not "false"
+	<count_per_dst_port />  // activates counts per dst port if present and not "false"
+    </counting>
+</configuration>
+
+UPDATE VIA XMLBLASTER:
+<config>
+    <octet_threshold>1000</octet_threshold>
+    <packet_threshold>5</packet_threshold>
+    <flow_threshold>3</flow_threshold>
+    <count_per_src_ip />
+    <count_per_dst_ip />
+    <count_per_src_port />
+    <count_per_dst_port />
+</config>
+
+
+REFERENCES:
+[1] @inproceedings{keys05,
+    Author = {Keys, Ken and Moore, David and Estan, Cristian},
+    Title = {A Robust System for Accurate Real-time Summaries of Internet Traffic},
+    BookTitle = {International Conference on Measurement & Modeling of Computer Systems (SIGMETRICS'05)},
+    Address= {Banff, Alberta, Canada},
+    Year = {2005} }
+

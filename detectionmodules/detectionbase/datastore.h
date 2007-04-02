@@ -91,7 +91,7 @@ class DataStore
          * @param n Field data to transform
          * @param length Length of field data
          */
-        int fieldToInt(byte* n, int length);
+       uint64_t fieldToInt(byte* n, unsigned length);
 
 	/**
 	 * Checkes wether the buffer is valid or not. A buffer may
@@ -115,6 +115,11 @@ private:
  */
 class IpAddress {
 public:
+        IpAddress()
+       	{
+		setAddress(0, 0, 0, 0);
+	}
+
         /**
          * Constructor
          * @param a First byte of address

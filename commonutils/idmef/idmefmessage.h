@@ -194,13 +194,16 @@ public:
 
         /**
          * Create <DIADEM:Statistics> node elements.
-         * @param OctetRate Volume in octets per second.
-         * @param PacketRate Amount of packets per second.
-         * @param PacketFrequency Packet frequency.
-         * @param AnomalyMeasure Anomaly measure.
+         * @param octets Number of Octets.
+         * @param packets Number of Packets.
+         * @param flows Number of Flows.
+         * @param pctetRate Volume in octets per second.
+         * @param packetRate Amount of packets per second.
+         * @param anomalyMeasure Anomaly measure.
          */
-        void createExtStatisticsNode(const std::string& octetRate, const std::string& packetRate,
-                                     const std::string& packetFrequency, const std::string& anomalyMeasure);
+        void createExtStatisticsNode(const std::string& octetCount, const std::string& packetCount, 
+		                     const std::string& flowCount, const std::string& octetRate, 
+				     const std::string& packetRate, const std::string& anomalyMeasure);
 
 	/**
 	 * Create <DIADEM:Statistics> node elements for HTTP requests.

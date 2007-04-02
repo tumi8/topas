@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<xmlBlasters>
+		<xmlBlaster>
+		  <prop>managerID module-manager</prop>
+		  <!--<prop>plugin/socket/hostname 127.0.0.1</prop>
+		  <prop>plugin/socket/port 7607</prop>-->
+		  <prop>queue/connection/type RAM</prop>
+		  <prop>xmlBlaster/logging/configFileName log4cplus.properties</prop>
+		  <prop>log4cplus.rootLogger WARN, STDOUT</prop>
+		</xmlBlaster>
+	</xmlBlasters>
+	<preferences>
+		<alarm_time>10</alarm_time>
+		<octet_threshold>1000</octet_threshold>
+		<packet_threshold>5</packet_threshold>
+		<flow_threshold>3</flow_threshold>
+		<verbose />
+	</preferences>
+	<counting>
+		<bf_size>1000</bf_size>
+		<bf_hashfunctions>3</bf_hashfunctions>
+		<count_per_src_ip />
+		<count_per_dst_ip />
+		<count_per_src_port />
+		<count_per_dst_port />
+	</counting>
+</configuration>

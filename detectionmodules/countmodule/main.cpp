@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*    Copyright (C) 2007 Gerhard Muenz                                    */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -16,40 +16,26 @@
 /*    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA    */
 /**************************************************************************/
 
-#include "datastore.h"
+/**
+ * @author Gerhard Muenz <muenz@informatik.uni-tuebingen.de>
+ */
 
+#include "countmodule.h"
 
-#include <ostream>
-#include <sstream>
+#include <iostream>
+#include <cstdlib>
+#include <commonutils/msgstream.h>
 
+MsgStream ms(MsgStream::WARN, "CountModule");
 
-uint64_t DataStore::fieldToInt(byte* data, unsigned len) 
+/* demonstrates the use of libdetectionModule */
+int main(int argc, char** argv) 
 {
-        switch (len) {
-        case 1:
-                return *(uint8_t*)data;
-        case 2:
-                return  ntohs(*(uint16_t*)data);
-        case 4:
-                return ntohl(*(uint32_t*)data);
-        case 8:
-                return ntohll(*(uint64_t*)data);
-        default:
-                return (uint64_t) -1;
-        }
-}
+    if (argc == 2) {
+	CountModule m(argv[1]);
+	return m.exec();
+    }
 
-
-std::string IpAddress::toString() const
-{
-        std::stringstream sstream;
-        sstream << address[0] << "." << address[1] << "." << address[2] << "." << address[3];
-        return sstream.str();
-}
-
-
-std::ostream& operator<<(std::ostream& ost, const IpAddress& ip) 
-{
-        ost << ip[0] << "." << ip[1] << "." << ip[2] << "." << ip[3];
-        return ost;
+    ms.print(MsgStream::ERROR, "Configuration file argument is missing!");
+    exit(-1);
 }

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*    Copyright (C) 2007 Gerhard Muenz                                    */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -16,40 +16,47 @@
 /*    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA    */
 /**************************************************************************/
 
-#include "datastore.h"
+#include "msgstream.h"
 
 
-#include <ostream>
-#include <sstream>
 
-
-uint64_t DataStore::fieldToInt(byte* data, unsigned len) 
+void MsgStream::setLevel(MsgLevel level)
 {
-        switch (len) {
-        case 1:
-                return *(uint8_t*)data;
-        case 2:
-                return  ntohs(*(uint16_t*)data);
-        case 4:
-                return ntohl(*(uint32_t*)data);
-        case 8:
-                return ntohll(*(uint64_t*)data);
-        default:
-                return (uint64_t) -1;
-        }
+    outputLevel = level;
 }
 
-
-std::string IpAddress::toString() const
+void MsgStream::setName(const std::string& newname)
 {
-        std::stringstream sstream;
-        sstream << address[0] << "." << address[1] << "." << address[2] << "." << address[3];
-        return sstream.str();
+    name = newname;
 }
 
-
-std::ostream& operator<<(std::ostream& ost, const IpAddress& ip) 
+void MsgStream::printIntro(MsgLevel level)
 {
-        ost << ip[0] << "." << ip[1] << "." << ip[2] << "." << ip[3];
-        return ost;
+    switch(level){
+	case FATAL:
+	    std::cout << "FATAL [" << name << "]: ";
+	    break;
+	case ERROR:
+	    std::cout << "ERROR [" << name << "]: ";
+	    break;
+	case WARN:
+	    std::cout << "WARN  [" << name << "]: ";
+	    break;
+	case INFO:
+	    std::cout << "INFO  [" << name << "]: ";
+	    break;
+	case DEBUG:
+	    std::cout << "DEBUG [" << name << "]: ";
+	    break;
+    }
 }
+
+void MsgStream::print(MsgLevel level, const std::string& msg)
+{
+    if(level <= outputLevel)
+    {
+	printIntro(level);
+	std::cout << msg << std::endl;
+    }
+}
+

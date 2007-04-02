@@ -331,8 +331,9 @@ void IdmefMessage::createExtHttpParametersNode(const std::string& method, const 
 	createIdmefNode(currNode, "DIADEM:Result", result);
 }
 
-void IdmefMessage::createExtStatisticsNode(const std::string& OctetRate, const std::string& PacketRate,
-                                           const std::string& PacketFrequency, const std::string& AnomalyMeasure)
+void IdmefMessage::createExtStatisticsNode(const std::string& octetCount, const std::string& packetCount, 
+	const std::string& flowCount, const std::string& octetRate, const std::string& packetRate, 
+	const std::string& anomalyMeasure)
 {
         xmlNodePtr currNode = xmlDocGetRootElement(idmefTree);
         currNode = findIdmefNode(currNode, "DIADEM:Observation");
@@ -347,15 +348,17 @@ void IdmefMessage::createExtStatisticsNode(const std::string& OctetRate, const s
 	if (currNode == NULL)
 		currNode = createIdmefNode("DIADEM:Observation", "DIADEM:Statistics", "NULL");      
 
-        createIdmefNode(currNode, "DIADEM:OctetRate", OctetRate);
+        createIdmefNode(currNode, "DIADEM:OctetCount", octetCount);
+        createIdmefNode(currNode, "DIADEM:PacketCount", packetCount);
+        createIdmefNode(currNode, "DIADEM:FlowCount", flowCount);
+
+        createIdmefNode(currNode, "DIADEM:OctetRate", octetRate);
         setIdmefNodeAttr(currNode, "DIADEM:OctetRate", "exponent", "0");
 
-        createIdmefNode(currNode, "DIADEM:PacketRate", PacketRate);
+        createIdmefNode(currNode, "DIADEM:PacketRate", packetRate);
         setIdmefNodeAttr(currNode, "DIADEM:PacketRate", "exponent", "0");
 
-        createIdmefNode(currNode, "DIADEM:PacketFrequency", PacketFrequency);
-
-        createIdmefNode(currNode, "DIADEM:AnomalyMeasure", AnomalyMeasure);
+        createIdmefNode(currNode, "DIADEM:AnomalyMeasure", anomalyMeasure);
         setIdmefNodeAttr(currNode, "DIADEM:AnomalyMeasure", "Base", "1000");
 }
 

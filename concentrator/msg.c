@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 static int msg_level=MSG_DEFAULT;
-static char *MSG_TAB[]={ "FATAL  ", "VERMONT", "ERROR  ", "DEBUG  ", "INFO   ", 0};
+static char *MSG_TAB[]={ "FATAL  ", "DIALOG ", "ERROR  ", "DEBUG  ", "INFO   ", 0};
 
 /*
  we need to serialize for msg_stat()

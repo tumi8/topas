@@ -4,7 +4,7 @@
 The IdmefMessage class creates a IDMEF-Message with/without the DIADEM extension
 and publishes it to the xmlBlaster server.
 
-1.) Create an "empty" IDMEF-Message:
+1.) Create a "empty" IDMEF-Message:
 
  IdmefMessage message("my-detection-module", "statistical anomaly detection");
  or
@@ -130,15 +130,16 @@ These are the functions according to the IDMEF-Message format
                                        const std::string& IPv4Netmask);
   - void createExtNetworkLayerElemNode(const std::string& nodeName, const std::string& value);
 
-  - void createExtStatisticsNode(const std::string& octetRate, const std::string& packetRate,
-                                 const std::string& packetFrequency, const std::string& anomalyMeasure);
+  - void createExtStatisticsNode(const std::string& octetCount, const std::string& packetCount, 
+                                 const std::string& flowCount, const std::string& octetRate,
+                                 const std::string& packetRate, const std::string& anomalyMeasure);
 
   - void createExtObservationPointNode(const std::string& OPName, const std::string& IPv4Address);
 
 Example:
 
  message.createExtAssessmentNode("330", "200", "700", "370"); 
- message.createStatisticsNode("34", "35", "36", "37");
+ message.createStatisticsNode("", "", "","34", "35", "37");
  message.createExtNetworkLayerNode();
  message.createNetworkLayerAddrNode("src", "10.0.1.0", "255.255.255.0");
  message.createNetworkLayerElemNode("DIADEM:IPv4NextProtocol", "TCP");
@@ -176,9 +177,11 @@ Output:
 			<DIADEM:Confidence Base="1000">370</DIADEM:Confidence>
 		</DIADEM:Assessment>
 		<DIADEM:Statistics>
+			<DIADEM:OctetCount></DIADEM:OctetRate>
+			<DIADEM:PacketCount></DIADEM:PacketRate>
+			<DIADEM:FlowCount></DIADEM:PacketFrequency>
 			<DIADEM:OctetRate exponent="0">34</DIADEM:OctetRate>
 			<DIADEM:PacketRate exponent="0">35</DIADEM:PacketRate>
-			<DIADEM:PacketFrequency>36</DIADEM:PacketFrequency>
 			<DIADEM:AnomalyMeasure Base="1000">37</DIADEM:AnomalyMeasure>
 		</DIADEM:Statistics>
 		<DIADEM:TrafficDescription>

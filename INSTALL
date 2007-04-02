@@ -5,7 +5,14 @@ Dependencies:
 - libxml2 >= 2.6.0
 - blas
 - gsl
-- xmlblaster (http://xmlblaster.org) (you need at least the client-c-api)
+- xmlblaster (http://xmlblaster.org) (you need the client-c++-api)
+
+Note on xmlblaster: 
+If the compiled client C++ library is not included in the xmlblaster 
+distribution, you have to rebuild xmlblaster by executing the following 
+command in xmlblaster home directory:
+$ ./build -DXMLBLASTER_COMPILE_LOG4CPLUS_PLUGIN=1 cpp-lib
+Make sure that xerces >2.4 is installed!
 
 You need cmake (http://www.cmake.org) for building the system. Install the
 packet and start cmake:

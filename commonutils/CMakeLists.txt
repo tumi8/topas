@@ -1,5 +1,5 @@
 ADD_LIBRARY(commonUtils confobj.cpp exceptions.cpp mutex.cpp packetstats.cpp
-sharedobj.cpp metering.cpp idmef/idmefmessage.cpp
+sharedobj.cpp metering.cpp msgstream.cpp idmef/idmefmessage.cpp
 idmef/xmlBlasterCommObject.cpp)
 
 IF (XML_BLASTER_FOUND)
