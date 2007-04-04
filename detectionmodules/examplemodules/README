@@ -59,10 +59,11 @@ are already implemented in the base class. Override (hide) them if necessary.
 This method will be called to indicate, that a new IPFIX record is ready to be
 passed to the class.
 
-SourceID is the id of the exporter sending this record (i hope you are famliar
-with the IPFIX protocol :D). 
+SourceID is the id of the exporter sending this record (observationDomainId in
+newer drafts of the standard)
 
-You can accept this record by returning true. Return false otherwise.
+You can accept this record by returning true. Return false otherwise. Have a
+look at DecectionBase::subscribeSourceId(), which is documented below.
 
 2.) int addFieldData(int id, byte* fieldData, int fieldDataLength, EnterpriseNo eid = 0)
 
@@ -159,6 +160,13 @@ Have a look at concentrator/ipfix.h for available field ids. Pass that
 id to subscribeTypeId() and you'll get that data delivered to the
 addFieldData() method of your storage class (of course only if your monitor
 exports that field :))
+
+Subscribing source ids:
+
+You may specify all the Source Ids (observationDomainIds in newer IPFIX
+drafts) in the base class. That can be done via the subscribeSourceId()
+member function of DetectionBase. If you do not subscribe to any source id,
+then you will get every IPFIX packet from every source id. 
 
 
 Exporting results:
@@ -261,6 +269,10 @@ void MyDetectionModuleClass::update(XMLConfObj* xmlObj)
 
 stop() and restart() methods are implemented in DetectionBase,
 add new functionality yourself, if needed.
+You have to call stop() or restart() if you want to stop your module. Never
+call the exit() function from the C standard libraries, because this will
+result in an inproper shutdown of the modules (this is because none of the
+c++ destructors are called).
 
 
 				Step Three
