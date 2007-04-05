@@ -362,32 +362,24 @@ void Snortmodule::readConfig(const std::string& filename)
 	}
 		
 
-        if (doRead && NULL != (tmp = config->getValue(ACCEPT_SOURCE_IDS))) {
-		unsigned last = 0;
-		unsigned res, IDEnd = 0;
-		bool more = true;
-		std::string temp,config;
-		config=tmp;
-		do {
-			res = config.find(',', last);
-			if (res == std::string::npos) {
-			more = false;
-			res = config.size();
-		}
-		if (IDEnd == 0) {
-			IDEnd = res;
-			if (IDEnd > 0) {
-				temp = std::string(config.begin(), config.begin() + res);
-				accept_source_ids.push_back(atoi(temp.c_str()));
+        if (doRead && (NULL != config->getValue(ACCEPT_SOURCE_IDS))) {
+		std::string str = config->getValue(ACCEPT_SOURCE_IDS);
+		if(str.size()>0)
+		{
+		    unsigned startpos = 0, endpos = 0;
+		    do {
+			endpos = str.find(',', endpos);
+			if (endpos == std::string::npos) {
+			    subscribeSourceId(atoi((str.substr(startpos)).c_str()));
+			    break;
 			}
-		} else {
-			temp = std::string(config.begin() + last, config.begin() + res);
-			if (!temp.empty()) {accept_source_ids.push_back(atoi(temp.c_str())); }
+			subscribeSourceId(atoi((str.substr(startpos, endpos-startpos)).c_str()));
+			endpos++;
+		    }
+		    while(true);
 		}
-		last = res + 1; // one past last space
-		} while (more);
-		SnortStore::accept_source_id=&accept_source_ids;
 	}
+
 #ifdef IDMEF_SUPPORT_ENABLED
 	config->setSection(WRAPPERSECTION);
 	

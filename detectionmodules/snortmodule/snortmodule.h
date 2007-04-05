@@ -97,7 +97,6 @@ private:
 	static const char* FIFO;
 	bool calc_thcs;
 	bool calc_iphcs;
-	std::vector<int> accept_source_ids;	
 #ifdef IDMEF_SUPPORT_ENABLED	
 	struct wrapperConfig_t {
 		bool enable;

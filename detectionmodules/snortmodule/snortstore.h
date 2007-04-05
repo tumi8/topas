@@ -40,7 +40,6 @@ public:
         void addFieldData(int id, byte* fieldData, int fieldDataLength, EnterpriseNo eid = 0); ///< Used by the collector to store data
 
 	PcapPacket* get_record(); ///< Used to get the record
-	static std::vector<int>* accept_source_id;
 	bool is_valid;	
 private:
 	PcapPacket *packet; 
