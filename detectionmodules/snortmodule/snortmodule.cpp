@@ -68,12 +68,16 @@ Snortmodule::Snortmodule(const std::string& filename) : DetectionBase<SnortStore
 	subscribeTypeId(313);//PSAMP_TYPEID_ipHeaderPacketSection 
 	subscribeTypeId(314);//PSAMP_TYPEID_ipPayloadPacketSection  
 
+	subscribeTypeId(IPFIX_TYPEID_flowStartSeconds);
+	subscribeTypeId(IPFIX_TYPEID_flowStartMicroSeconds);
+	msg(MSG_DIALOG, "Snortmodule: Warning! I will interprete flowStartMicroSeconds as complement for flowStartSeconds (deviating from IPFIX info model).");
+
 	// Sighandlers		
 	if (signal(SIGTERM, sigTerm) == SIG_ERR) {
-               msg(MSG_ERROR, "Snortmodule: Couldn't install signal handler for SIGTERM.\n ");
+               msg(MSG_ERROR, "Snortmodule: Couldn't install signal handler for SIGTERM.");
         } 
 	if (signal(SIGINT, sigInt) == SIG_ERR) {
-               msg(MSG_ERROR, "Snortmodule: Couldn't install signal handler for SIGINT.\n ");
+               msg(MSG_ERROR, "Snortmodule: Couldn't install signal handler for SIGINT.");
         } 	
 
 	if (signal(SIGCHLD, sigChild) == SIG_ERR) {

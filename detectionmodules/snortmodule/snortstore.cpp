@@ -124,6 +124,15 @@ void SnortStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 			packet->ippps_size=fieldDataLength;
 			bcopy(fieldData, packet->ippps_p, fieldDataLength);
 			break;			
+
+		//Timestamps
+		case	IPFIX_TYPEID_flowStartSeconds:
+			packet->ts_sec = (uint32_t)fieldToInt(fieldData, fieldDataLength);
+			break;
+		case	IPFIX_TYPEID_flowStartMicroSeconds:
+			packet->ts_usec = (uint32_t)fieldToInt(fieldData, fieldDataLength);
+			break;
+
 		//Rest ;)
 		default:
 			break;

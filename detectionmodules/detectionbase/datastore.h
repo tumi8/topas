@@ -87,7 +87,7 @@ class DataStore
         
 
         /**
-         * Transforms an IpfixField into an integer
+         * Transforms an IpfixField into an integer (host byte order)
          * @param n Field data to transform
          * @param length Length of field data
          */

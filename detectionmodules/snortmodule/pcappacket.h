@@ -59,7 +59,7 @@ public:
 	uint16_t hdr_src_port; ///< Transport protocol source port is stored in here
 
 	uint32_t ts_sec; 	///< unix time when the packet was recieved
-	static uint32_t ts_usec;	///< part of the unix time
+	uint32_t ts_usec;	///< part of the unix time
 	static char *ts_fmt;
 
 	/**\brief Struct of the typical ethernet header

@@ -36,13 +36,12 @@
 #include "pcappacket.h"
 
 
-PcapPacket::PcapPacket() : iphps_p(0), iphps_size(0), ippps_p(0), ippps_size(0), hdr_tcp(false), hdr_udp(false), ts_sec(0) {};
+PcapPacket::PcapPacket() : iphps_p(0), iphps_size(0), ippps_p(0), ippps_size(0), hdr_tcp(false), hdr_udp(false), ts_sec(0), ts_usec(0) {};
 PcapPacket::~PcapPacket(){
 delete iphps_p;
 delete ippps_p;
 };
 
-uint32_t PcapPacket::ts_usec = 0;
 char *PcapPacket::ts_fmt = NULL;
 PcapPacket::hdr_ethernet_t PcapPacket::HDR_ETHERNET = {
     {0x02, 0x02, 0x02, 0x02, 0x02, 0x02},
