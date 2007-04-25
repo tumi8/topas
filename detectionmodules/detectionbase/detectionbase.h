@@ -185,7 +185,7 @@ class DetectionBase
         /**
          * Adds a type id to the list. Only data corresponding to field ids on the list
          * will be stored by the class.
-         * If the list is empty, all data will be stored
+         * If the list is empty, all received data will be passed to the module
          * @param id Field ID to be stored in the list
          */
         void subscribeTypeId(int id)  

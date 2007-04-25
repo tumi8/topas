@@ -217,6 +217,9 @@ protected:
 
         bool isIdInList(int id) const
         {
+		if (idList.empty()) {
+			return true;
+		}
                 /* TODO: think about hashing */
                 for (std::vector<int>::const_iterator i = idList.begin(); i != idList.end(); ++i) {
                         if ((*i) == id)
