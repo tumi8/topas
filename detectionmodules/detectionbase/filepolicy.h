@@ -318,12 +318,11 @@ template <
 >
 class UnbufferedFilesInputPolicy : public InputPolicyBase<Notifier, Storage>, public PacketReader<Notifier, Storage> {
 public:
-	UnbufferedFilesInputPolicy() {
-		sem_init(&sem, 0, 0);
+	UnbufferedFilesInputPolicy() : maxBuffers(256), bufferErrors(0) {
+		packetLock.lock();
 	}
 
 	~UnbufferedFilesInputPolicy() {
-		sem_destroy(&sem);
 	}
 
 	void importToStorage() {
@@ -335,24 +334,32 @@ public:
 	 */
         Storage* getStorage()
         {
-		sem_wait(&sem);
+		packetLock.lock();
 		PacketReader<Notifier, Storage>::recordMutex.lock();
 		Storage* ret = *buffers.begin();
 		buffers.pop_front();
 		PacketReader<Notifier, Storage>::recordMutex.unlock();
 		return ret;
         }
-		
+
 private:
 	Storage* getBuffer() {
+		if(buffers.size() >= maxBuffers) // Buffer is full
+		{
+			bufferErrors++;
+			msg(MSG_ERROR, "DetectionBase: getBuffer() returns NULL, record will be dropped! %lu", bufferErrors);
+			return NULL;
+		}
 		Storage* ret = new Storage();
 		buffers.push_back(ret);
-		sem_post(&sem);
+		packetLock.unlock();
 		return ret;
 	}
 
 	std::list<Storage*> buffers;
-	sem_t sem;
+	unsigned maxBuffers;	
+	unsigned bufferErrors;
+	Mutex packetLock; // locked as long as buffers is empty
 };
 
 #endif

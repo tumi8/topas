@@ -21,6 +21,7 @@
 
 
 #include <concentrator/rcvIpfix.h>
+//#include <concentrator/msg.h>
 
 
 /**
@@ -50,17 +51,22 @@ int newDataRecordArrived(void* handle, SourceID sourceID, TemplateInfo* ti,
 {
         PacketReader* input = static_cast<PacketReader*>(handle);
         input->recordMutex.lock();
-        Storage* buf = input->getBuffer();
-        if (buf->recordStart(sourceID)) {
-		buf->setValid(true);
-                for (int i = 0; i < ti->fieldCount; ++i) {
-                        if (input->isIdInList(ti->fieldInfo[i].type.id)) {
-                                buf->addFieldData(ti->fieldInfo[i].type.id, data + ti->fieldInfo[i].offset,
-						  ti->fieldInfo[i].type.length, ti->fieldInfo[i].type.length);
-                        }
-                }
-                buf->recordEnd();
-        }
+        Storage* buf;
+        if(buf = input->getBuffer()) {
+		if (buf->recordStart(sourceID)) {
+			buf->setValid(true);
+			for (int i = 0; i < ti->fieldCount; ++i) {
+				if (input->isIdInList(ti->fieldInfo[i].type.id)) {
+					buf->addFieldData(ti->fieldInfo[i].type.id, data + ti->fieldInfo[i].offset,
+							ti->fieldInfo[i].type.length, ti->fieldInfo[i].type.length);
+				}
+			}
+			buf->recordEnd();
+		}
+	}/* Error message is printed in filepolicy.h with an error counter
+	else { 
+		msg(MSG_ERROR, "DetectionBase: getBuffer() returned NULL, record dropped!");
+	}*/
         input->recordMutex.unlock();
         return 0;
 }
@@ -147,25 +153,30 @@ int newDataRecordFixedFieldsArrived(void* handle, SourceID sourceID,
         /* same as with new_data_record_arrived */
         PacketReader* input = static_cast<PacketReader*>(handle);
         input->recordMutex.lock();
-	Storage* buf = input->getBuffer();
-        if (buf->recordStart(sourceID)) {
-		buf->setValid(true);
-                for (int i = 0; i < ti->fieldCount; ++i) {
-                        if (input->isIdInList(ti->fieldInfo[i].type.id)) {
-                                buf->addFieldData(ti->fieldInfo[i].type.id, data + ti->fieldInfo[i].offset,
-						  ti->fieldInfo[i].type.length, ti->fieldInfo[i].type.eid);
-                        }
-                }
-                
-                /* pass fixed fields now */
-                for (int i = 0; i < ti->dataCount; ++i) {
-                        if (input->isIdInList(ti->dataInfo[i].type.id)) {
-                                buf->addFieldData(ti->dataInfo[i].type.id, ti->data +ti->dataInfo[i].offset,
-						  ti->dataInfo[i].type.length, ti->fieldInfo[i].type.eid);
-                        }
-                }
-                buf->recordEnd();
-        }
+        Storage* buf;
+        if(buf = input->getBuffer()) {
+		if (buf->recordStart(sourceID)) {
+			buf->setValid(true);
+			for (int i = 0; i < ti->fieldCount; ++i) {
+				if (input->isIdInList(ti->fieldInfo[i].type.id)) {
+					buf->addFieldData(ti->fieldInfo[i].type.id, data + ti->fieldInfo[i].offset,
+							ti->fieldInfo[i].type.length, ti->fieldInfo[i].type.eid);
+				}
+			}
+
+			/* pass fixed fields now */
+			for (int i = 0; i < ti->dataCount; ++i) {
+				if (input->isIdInList(ti->dataInfo[i].type.id)) {
+					buf->addFieldData(ti->dataInfo[i].type.id, ti->data +ti->dataInfo[i].offset,
+							ti->dataInfo[i].type.length, ti->fieldInfo[i].type.eid);
+				}
+			}
+			buf->recordEnd();
+		}
+	}/* Error message is printed in filepolicy.h with an error counter
+	else { 
+		msg(MSG_ERROR, "DetectionBase: getBuffer() returned NULL, record dropped!");
+	}*/
         input->recordMutex.unlock();
         return 0;
 }
