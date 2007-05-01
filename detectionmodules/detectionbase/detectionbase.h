@@ -25,14 +25,10 @@
 
 #include <commonutils/sharedobj.h>
 #include <commonutils/global.h>
-#include <commonutils/mutex.h>
 #include <commonutils/idmef/idmefmessage.h>
 #include <commonutils/confobj.h>
 #include <concentrator/ipfix.h>
 #include <concentrator/rcvIpfix.h>
-
-
-#include <signal.h>
 
 
 #include <fstream>
@@ -78,12 +74,6 @@ class DetectionBase
                 : alarmTime(10)
 #endif
         {
-		testMutex.lock();
-                
-                if (SIG_ERR == signal(SIGALRM, DetectionBase<DataStorage, InputPolicy>::sigAlarm)) {
-                        std::cerr << "Could not install signal handler for SIGALARM: " << strerror(errno) << std::endl;
-                        throw std::runtime_error("Could not install signal handler for SIGALARM");
-                }
 		confObj = new XMLConfObj(configFile, XMLConfObj::XML_FILE);
 
 #ifdef IDMEF_SUPPORT_ENABLED
@@ -255,32 +245,45 @@ class DetectionBase
 		pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
                 DetectionBase<DataStorage, InputPolicy>* dbase = static_cast<DetectionBase<DataStorage, InputPolicy>*>(detectionbase_);
+
 		// when alarmtime > 0, buffering is used
 		// otherwise each record is seperately passed to the test function
 		while(state == RUN) {
 			// what a ugly hack! substitute this with some 
 			// saved state!!!!!
-			while(dbase->getAlarmTime() > 0 && state == RUN) {
-				alarm(dbase->getAlarmTime());
-				dbase->testMutex.lock();
-#ifdef IDMEF_SUPPORT_ENABLED
- 				for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
-					std::string ret = dbase->commObjs[i]->getUpdateMessage();
-					if (ret != "") {
-						try {
-							XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
-							dbase->update(confObj);
-							delete confObj;
-						} catch (const exceptions::XMLException &e) {
-							msg(MSG_ERROR, e.what());
-							dbase->sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
-						}
+			if((unsigned testInterval = dbase->getAlarmTime()) > 0) {
+				time_t testTime = time(NULL) + testInterval;
+				
+				while(testInterval > 0 && state == RUN) {
+					time_t t = time(NULL);
+					if (t > testTime) {
+						msg(MSG_ERROR, "DetectionBase: Test function is too slow.");
+					} else {
+						sleep(testTime - t);
 					}
- 				}				
+					testInterval = dbase->getAlarmTime(); // may have changed
+					testTime = testTime + testInterval;
+
+#ifdef IDMEF_SUPPORT_ENABLED
+					for (unsigned i = 0; i != dbase->commObjs.size(); ++i) {
+						std::string ret = dbase->commObjs[i]->getUpdateMessage();
+						if (ret != "") {
+							try {
+								XMLConfObj* confObj = new XMLConfObj(ret, XMLConfObj::XML_STRING);
+								dbase->update(confObj);
+								delete confObj;
+							} catch (const exceptions::XMLException &e) {
+								msg(MSG_ERROR, e.what());
+								dbase->sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
+							}
+						}
+					}				
 #endif
-				// get received data into the user data struct 
-				dbase->test(inputPolicy.getStorage());
+					// get received data into the user data struct 
+					dbase->test(inputPolicy.getStorage());
+				}
 			}
+
 			while(dbase->getAlarmTime() == 0 && state == RUN) {
 				DataStorage* d = inputPolicy.getStorage();
 				if (d->isValid()) {
@@ -506,30 +509,13 @@ private:
 	pthread_t workingThread;
         static volatile State state;
 
-        /**
-         * If test_mutex locked, no test will be performed
-         */
-	static Mutex testMutex;
-
         XMLConfObj* confObj;
 
-
         unsigned alarmTime;
-        
-        /**
-         * Signal handler for SIGALRM. This signal is emmited, evry time
-         * a new test should be performed
-         */
-        static void sigAlarm(int) 
-        {
-		testMutex.unlock();
-        }
 };
 
 
 
-template<class DataStorage, class InputPolicy>
-Mutex DetectionBase<DataStorage, InputPolicy>::testMutex;
 template<class DataStorage, class InputPolicy>
 InputPolicy DetectionBase<DataStorage, InputPolicy>::inputPolicy;
 template<class DataStorage, class InputPolicy>
