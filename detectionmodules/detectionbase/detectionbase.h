@@ -241,6 +241,9 @@ class DetectionBase
          */
         static void* testThreadFunc(void* detectionbase_) 
         {
+		unsigned testInterval;
+		time_t testTime, t;
+
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 		pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
@@ -251,11 +254,11 @@ class DetectionBase
 		while(state == RUN) {
 			// what a ugly hack! substitute this with some 
 			// saved state!!!!!
-			if((unsigned testInterval = dbase->getAlarmTime()) > 0) {
-				time_t testTime = time(NULL) + testInterval;
+			if((testInterval = dbase->getAlarmTime()) > 0) {
+				testTime = time(NULL) + testInterval;
 				
 				while(testInterval > 0 && state == RUN) {
-					time_t t = time(NULL);
+					t = time(NULL);
 					if (t > testTime) {
 						msg(MSG_ERROR, "DetectionBase: Test function is too slow.");
 					} else {

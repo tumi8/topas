@@ -62,7 +62,7 @@ void PrintStore::addFieldData(int id, byte * fieldData, int fieldDataLength,
 
   case IPFIX_TYPEID_flowStartSeconds:
 
-    if (fieldDataLength != IPFIX_LENGTH_flowCreationTime) {
+    if (fieldDataLength != IPFIX_LENGTH_flowStartSeconds) {
       std::cerr << "Error! Got invalid IPFIX field data (flow start)! "
 		<< "Skipping record.\n";
       return;
@@ -72,7 +72,7 @@ void PrintStore::addFieldData(int id, byte * fieldData, int fieldDataLength,
 
   case IPFIX_TYPEID_flowEndSeconds:
 
-    if (fieldDataLength != IPFIX_LENGTH_flowEndTime) {
+    if (fieldDataLength != IPFIX_LENGTH_flowEndSeconds) {
       std::cerr << "Error! Got invalid IPFIX field data (flow end)! "
 		<< "Skipping record.\n";
       return;
