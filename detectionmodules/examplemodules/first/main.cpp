@@ -1,5 +1,6 @@
 /**************************************************************************/
 /*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*                            Gerhard Muenz                               */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -28,9 +29,12 @@
 /* demonstrates the use of libdetectionModule */
 int main(int argc, char** argv) 
 {
-        std::cerr << "Got command line arguments: " << std::endl;
+	msgStr.setName("First Examplemodule");
+	msgStr.setLevel(MsgStream::INFO);
+		
+        msgStr.print(MsgStream::INFO, "Got command line arguments:");
         for (int i = 0; i != argc; ++i) {
-                std::cerr << "Argument " << i << ": " << argv[i] << std::endl;
+                msgStr << MsgStream::INFO << "Argument " << i << ": " << argv[i] << MsgStream::endl;
         }
 
         if (argc == 2) {

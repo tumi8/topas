@@ -22,6 +22,7 @@
 #define _PRINT_STORE_H_
 
 #include <datastore.h>
+#include <ipaddress.h>
 #include <iostream>
 
 class PrintStore : public DataStore {

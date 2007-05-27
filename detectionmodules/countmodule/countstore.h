@@ -24,8 +24,8 @@
 #include <ostream>
 #include <stdexcept>
 #include <datastore.h>
+#include <ipaddress.h>
 #include <iostream>
-#include <concentrator/msg.h>
 #include "bloomfilter.h"
 
 template<unsigned size> class GenericKey

@@ -1,6 +1,7 @@
 /**************************************************************************/
 /*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
 /*         2007 Raimondas Sasnauskas <sasnausk@informatik.uni-tuebigen.de */
+/*              Gerhard Muenz                                             */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -21,10 +22,12 @@
 #define _DETECTION_BASE_H_
 
 #include "filepolicy.h"
+#include "offlinepolicy.h"
 
 
 #include <commonutils/sharedobj.h>
 #include <commonutils/global.h>
+#include <commonutils/msgstream.h>
 #include <commonutils/idmef/idmefmessage.h>
 #include <commonutils/confobj.h>
 #include <concentrator/ipfix.h>
@@ -46,6 +49,8 @@
 #include <vector>
 
 
+extern MsgStream msgStr; // is defined in detectionbase.cpp
+
 /**
  * Base class for all detection modules used within the IDS.
  * The base class hides all IPFIX stuff from the detection module
@@ -63,17 +68,21 @@ class DetectionBase
                 EXIT,
                 RESTART
         } State;
+
         /**
          * Constructor taking path to configuration file. This configuration file is needed to
          * pass information about xmlBlaster sites to the module
          */
         DetectionBase(const std::string& configFile = "")
 #ifdef IDMEF_SUPPORT_ENABLED
-                : currentMessage(NULL), alarmTime(10)
+                : currentMessage(NULL), alarmTime(10), confObj(NULL)
 #else
-                : alarmTime(10)
+                : alarmTime(10), confObj(NULL)
 #endif
         {
+		if(configFile == "")
+		    return;
+	    
 		confObj = new XMLConfObj(configFile, XMLConfObj::XML_FILE);
 
 #ifdef IDMEF_SUPPORT_ENABLED
@@ -154,11 +163,11 @@ class DetectionBase
                 for (unsigned i = 0; i != commObjs.size(); ++i) {
 			std::string managerID = (*xmlBlasters[i].getElement()).getProperty().getProperty(config_space::MANAGER_ID);
 			if (managerID == "") {
-                                msg(MSG_INFO, ("Using default " + config_space::MANAGER_ID + " \""
-                                               + config_space::DEFAULT_MANAGER_ID + "\"").c_str());
+                                msgStr << MsgStream::INFO << "Using default " << config_space::MANAGER_ID << " \""
+                                               << config_space::DEFAULT_MANAGER_ID << "\" in exit message" << MsgStream::endl;
                                 managerID = config_space::DEFAULT_MANAGER_ID;
                         }
-			// erase subsribed topic
+			// erase subscribed topic
 			commObjs[i]->erase(analyzerName + "-" + analyzerId);
 			// notify manager about exiting
 			commObjs[i]->publish("<exit oid='" + analyzerName + "-" + analyzerId + "'/>", managerID);
@@ -220,7 +229,7 @@ class DetectionBase
                         return 0;
 
                 // we should never get here!
-                throw new std::runtime_error("DetectionBase: unkown state!!!!!!!!!");
+                throw new std::runtime_error("DetectionBase: unknown state!!!!!!!!!");
         }
 
 	static void* workThreadFunc(void* detectionbase_) {
@@ -230,9 +239,16 @@ class DetectionBase
                 DetectionBase<DataStorage, InputPolicy>* dbase = static_cast<DetectionBase<DataStorage, InputPolicy>*>(detectionbase_);
 
                 while (state == RUN) {
-                        inputPolicy.wait();
-                        inputPolicy.importToStorage();
-                        inputPolicy.notify();
+                        if(inputPolicy.wait() == 0)
+			{
+                                msgStr << MsgStream::INFO << "inputPolicy.wait() returned 0, i.e. no more data or file error. Exiting." << MsgStream::endl;
+				state = EXIT;
+			}
+			else
+			{
+				inputPolicy.importToStorage();
+				inputPolicy.notify();
+			}
                 }
 	}
 
@@ -260,7 +276,7 @@ class DetectionBase
 				while(testInterval > 0 && state == RUN) {
 					t = time(NULL);
 					if (t > testTime) {
-						msg(MSG_ERROR, "DetectionBase: Test function is too slow.");
+						msgStr.print(MsgStream::ERROR, "Test function is too slow");
 					} else {
 						sleep(testTime - t);
 					}
@@ -276,7 +292,7 @@ class DetectionBase
 								dbase->update(confObj);
 								delete confObj;
 							} catch (const exceptions::XMLException &e) {
-								msg(MSG_ERROR, e.what());
+								msgStr.print(MsgStream::ERROR, e.what());
 								dbase->sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
 							}
 						}
@@ -301,7 +317,7 @@ class DetectionBase
 							dbase->update(confObj);
 							delete confObj;
 						} catch (const exceptions::XMLException &e) {
-							msg(MSG_ERROR, e.what());
+							msgStr.print(MsgStream::ERROR, e.what());
 							dbase->sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
 						}						
 					}
@@ -445,8 +461,8 @@ protected:
 		for (unsigned i = 0; i != commObjs.size(); ++i) {
 			std::string managerID = (*xmlBlasters[i].getElement()).getProperty().getProperty(config_space::MANAGER_ID);
 			if (managerID == "") {
-				msg(MSG_INFO, ("Using default " + config_space::MANAGER_ID + " \"" 
-					       + config_space::DEFAULT_MANAGER_ID + "\"").c_str());
+                                msgStr << MsgStream::INFO << "Using default " << config_space::MANAGER_ID << " \""
+                                               << config_space::DEFAULT_MANAGER_ID << "\" in heartbeat message" << MsgStream::endl;
 				managerID = config_space::DEFAULT_MANAGER_ID;
 			}
 			heartbeatMessage->publish(*commObjs[i], managerID);

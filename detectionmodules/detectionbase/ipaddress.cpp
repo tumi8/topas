@@ -1,5 +1,6 @@
 /**************************************************************************/
 /*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*                            Gerhard Muenz                               */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -16,43 +17,32 @@
 /*    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA    */
 /**************************************************************************/
 
-#ifndef _EXAMPLE_DATA_STORAGE_H_
-#define _EXAMPLE_DATA_STORAGE_H_
+#include "ipaddress.h"
 
-#include <map>
-#include <vector>
 #include <ostream>
-#include <stdexcept>
-#include <datastore.h>
-#include <ipaddress.h>
-#include <iostream>
+#include <sstream>
 
 
-class ExampleDataStorage : public DataStore 
+std::string IpAddress::toString() const
 {
- public:
-        ExampleDataStorage();
-        ~ExampleDataStorage();
-        
-        /**
-         * Inserts the field with fieldId id into the storage class.
-         */
-        void addFieldData(int id, byte* fieldData, int fieldDataLength, EnterpriseNo eid = 0);
-        
-	bool recordStart(SourceID);
-	void recordEnd();
-	
-	const IpAddress& getSourceIP() { return sourceAddress; }
-	const IpAddress& getDestinationIP() { return destinationAddress; }
+        std::stringstream sstream;
+        sstream << address[0] << "." << address[1] << "." << address[2] << "." << address[3];
+        return sstream.str();
+}
 
-	uint16_t sourcePort;
-	uint16_t destinationPort;
-        
- private:
-	IpAddress sourceAddress;
-	IpAddress destinationAddress;
-	bool recordStarted;
-	int records;
-};
 
-#endif
+std::ostream& operator<<(std::ostream& ost, const IpAddress& ip) 
+{
+        ost << ip[0] << "." << ip[1] << "." << ip[2] << "." << ip[3];
+        return ost;
+}
+
+
+std::istream& operator>>(std::istream& ist, IpAddress& ip) 
+{
+	unsigned i[4];
+	char dot;
+        if(ist >> i[0] >> dot >> i[1] >> dot >> i[2] >> dot >> i[3])
+		ip.setAddress(i[0], i[1], i[2], i[3]);
+        return ist;
+}

@@ -1,5 +1,6 @@
 /**************************************************************************/
 /*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*                            Gerhard Muenz                               */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -35,4 +36,29 @@ void ExampleDataStorage::addFieldData(int id, byte* fieldData, int fieldDataLeng
         // These ip addresses are stored in a vector
         addresses.push_back(IpAddress(fieldData[0], fieldData[1],
                                       fieldData[2], fieldData[3]));
+}
+
+std::ofstream& operator<<(std::ofstream& os, const ExampleDataStorage* store)
+{
+        os << store->size() << " ";
+        for(unsigned i = 0; i < store->size(); i++) {
+		os << store->addresses[i] << " ";
+        }
+        os << std::endl;
+        return os;
+}
+
+std::ifstream& operator>>(std::ifstream& is, ExampleDataStorage* store)
+{
+        unsigned size;
+        IpAddress addr;
+        is >> size;
+        if(!is) 
+		return is;
+	store->addresses.clear();
+	for(unsigned i = 0; i < size; i++) {
+		is >> addr;
+		store->addresses.push_back(addr);
+	}
+	return is;
 }

@@ -20,9 +20,7 @@
 #include <concentrator/ipfix_names.h>
 
 #include <iostream>
-#include <commonutils/msgstream.h>
 
-extern MsgStream ms;
 
 bool CountModule::verbose = false;
 
@@ -32,10 +30,10 @@ CountModule::CountModule(const std::string& configfile)
 {
     /* signal handlers */
     if (signal(SIGTERM, sigTerm) == SIG_ERR) {
-	ms.print(MsgStream::ERROR, "Couldn't install signal handler for SIGTERM.");
+	msgStr.print(MsgStream::ERROR, "Couldn't install signal handler for SIGTERM.");
     } 
     if (signal(SIGINT, sigInt) == SIG_ERR) {
-	ms.print(MsgStream::ERROR, "Couldn't install signal handler for SIGINT.");
+	msgStr.print(MsgStream::ERROR, "Couldn't install signal handler for SIGINT.");
     } 	
 
     init(configfile);
@@ -64,17 +62,17 @@ void CountModule::init(const std::string& configfile)
 	    if(config.getValue("verbose") != "false")
 	    {
 		CountModule::verbose = true;
-		ms.setLevel(MsgStream::INFO);
+		msgStr.setLevel(MsgStream::INFO);
 	    }
 
 	if(config.nodeExists("debug"))
 	    if(config.getValue("debug") != "false")
 	    {
 		CountModule::verbose = true;
-		ms.setLevel(MsgStream::DEBUG);
+		msgStr.setLevel(MsgStream::DEBUG);
 	    }
 
-	ms.print(MsgStream::INFO, "Starting with parameters:");
+	msgStr.print(MsgStream::INFO, "Starting with parameters:");
 
 	if(config.nodeExists("output_file"))
 	    outfile.open(config.getValue("output_file").c_str());
@@ -82,22 +80,22 @@ void CountModule::init(const std::string& configfile)
 	    outfile.open(filename);
 	if(!outfile) 
 	{
-	    ms << MsgStream::ERROR << "Could not open output file " << filename << "." << MsgStream::endl;
+	    msgStr << MsgStream::ERROR << "Could not open output file " << filename << "." << MsgStream::endl;
 	    stop();
 	}
-	ms << MsgStream::INFO << "Output file: " << filename << MsgStream::endl;
+	msgStr << MsgStream::INFO << "Output file: " << filename << MsgStream::endl;
 
 	if(config.nodeExists("alarm_time"))
 	    alarm = atoi(config.getValue("alarm_time").c_str());
 	setAlarmTime(alarm);
-	ms << MsgStream::INFO << "Test interval: " << alarm << " seconds" << MsgStream::endl;
+	msgStr << MsgStream::INFO << "Test interval: " << alarm << " seconds" << MsgStream::endl;
 
 	if(config.nodeExists("accept_source_ids"))
 	{
 	    std::string str = config.getValue("accept_source_ids");
 	    if(str.size()>0)
 	    {
-		ms << MsgStream::INFO << "Accepted source ids: " << str << MsgStream::endl;
+		msgStr << MsgStream::INFO << "Accepted source ids: " << str << MsgStream::endl;
 		unsigned startpos = 0, endpos = 0;
 		do {
 		    endpos = str.find(',', endpos);
@@ -118,7 +116,7 @@ void CountModule::init(const std::string& configfile)
 	    packetThreshold = atoi(config.getValue("packet_threshold").c_str());
 	if(config.nodeExists("flow_threshold"))
 	    flowThreshold = atoi(config.getValue("flow_threshold").c_str());
-	ms << MsgStream::INFO << "Thresholds: " << octetThreshold << " octets, " << packetThreshold << " packets, "
+	msgStr << MsgStream::INFO << "Thresholds: " << octetThreshold << " octets, " << packetThreshold << " packets, "
 	    << flowThreshold << " flows" << MsgStream::endl;
 
 	config.leaveNode();
@@ -133,34 +131,34 @@ void CountModule::init(const std::string& configfile)
 	if(config.nodeExists("bf_hashfunctions"))
 	    bfHF = atoi(config.getValue("bf_hashfunctions").c_str());
 	CountStore::init(bfSize, bfHF);
-	ms << MsgStream::INFO << "Bloomfilter: " << bfSize << " bits, " << bfHF << " hash functions" << MsgStream::endl;
+	msgStr << MsgStream::INFO << "Bloomfilter: " << bfSize << " bits, " << bfHF << " hash functions" << MsgStream::endl;
 
-	ms << MsgStream::INFO << "Counting per ";
+	msgStr << MsgStream::INFO << "Counting per ";
 	if(config.nodeExists("count_per_src_ip"))
 	    if(config.getValue("count_per_src_ip") != "false") 
 	    {
 		CountStore::countPerSrcIp = true;
-		ms << "src addr, ";
+		msgStr << "src addr, ";
 	    }
 	if(config.nodeExists("count_per_dst_ip"))
 	    if(config.getValue("count_per_dst_ip") != "false")
 	    {
 		CountStore::countPerDstIp = true;
-		ms << "dst addr, ";
+		msgStr << "dst addr, ";
 	    }
 	if(config.nodeExists("count_per_src_port"))
 	    if(config.getValue("count_per_src_port") != "false")
 	    {
 		CountStore::countPerSrcPort = true;
-		ms << "src port, ";
+		msgStr << "src port, ";
 	    }
 	if(config.nodeExists("count_per_dst_port"))
 	    if(config.getValue("count_per_dst_port") != "false")
 	    {
 		CountStore::countPerDstPort = true;
-		ms << "dst port";
+		msgStr << "dst port";
 	    }
-	ms << MsgStream::endl;
+	msgStr << MsgStream::endl;
     }
 
 #ifdef IDMEF_SUPPORT_ENABLED
@@ -181,13 +179,13 @@ void CountModule::init(const std::string& configfile)
 void CountModule::update(XMLConfObj* xmlObj)
 {
     if (xmlObj->nodeExists("stop")) {
-	ms.print(MsgStream::INFO, "Update: Stopping module.");
+	msgStr.print(MsgStream::INFO, "Update: Stopping module.");
 	stop();
     } else if (xmlObj->nodeExists("restart")) {
-	ms.print(MsgStream::INFO, "Update: Restarting module.");
+	msgStr.print(MsgStream::INFO, "Update: Restarting module.");
 	restart();
     } else if (xmlObj->nodeExists("config")) {
-	ms.print(MsgStream::INFO, "Update: Changing module configuration.");
+	msgStr.print(MsgStream::INFO, "Update: Changing module configuration.");
 	xmlObj->enterNode("config");
 	if(xmlObj->nodeExists("count_per_src_ip")) {
 	    if(xmlObj->getValue("count_per_src_ip") != "false")
@@ -216,7 +214,7 @@ void CountModule::update(XMLConfObj* xmlObj)
 	if(xmlObj->nodeExists("flow_threshold"))
 	    flowThreshold = atoi(xmlObj->getValue("flow_threshold").c_str());
     } else { // add your commands here
-	ms.print(MsgStream::INFO, "Update: Unsupported operation.");
+	msgStr.print(MsgStream::INFO, "Update: Unsupported operation.");
     }
 }
 #endif
@@ -229,7 +227,7 @@ void CountModule::test(CountStore* store)
     IdmefMessage& idmefMessage = getNewIdmefMessage("Countmodule", "threshold detection");
 #endif
 
-    ms.print(MsgStream::INFO, "Generating report...");
+    msgStr.print(MsgStream::INFO, "Generating report...");
     outfile << "******************** Report *********************" << std::endl;
     outfile << "thresholds: octets>=" << octetThreshold << " packets>=" << packetThreshold << " flows>=" << flowThreshold << std::endl;
 

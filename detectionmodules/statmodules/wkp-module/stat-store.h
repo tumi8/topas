@@ -22,6 +22,7 @@
 #define _STAT_STORE_H_
 
 #include <datastore.h>
+#include <ipaddress.h>
 #include <concentrator/ipfix.h>
 #include <map>
 #include <vector>

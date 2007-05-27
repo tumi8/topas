@@ -1,5 +1,6 @@
 /**************************************************************************/
 /*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*                            Gerhard Muenz                               */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -23,14 +24,24 @@
 #include <fstream>
 
 
+const char offlineFile[] = "datastore.txt";
+
 ExampleModule::ExampleModule() 
+#ifdef OFFLINE_ENABLED
+        : DetectionBase<ExampleDataStorage, OfflineInputPolicy<ExampleDataStorage> >()
+#else
         : DetectionBase<ExampleDataStorage>()
+#endif
 {
         init();
 }
 
 ExampleModule::ExampleModule(const std::string& configfile)
+#ifdef OFFLINE_ENABLED
+        : DetectionBase<ExampleDataStorage, OfflineInputPolicy<ExampleDataStorage> >(configfile)
+#else
         : DetectionBase<ExampleDataStorage>(configfile)
+#endif
 {
         init();
 }
@@ -44,8 +55,18 @@ void ExampleModule::init()
 	if (signal(SIGINT, sigInt) == SIG_ERR) {
 		msg(MSG_ERROR, "Couldn't install signal handler for SIGINT.\n ");
         } 	
+
+#ifdef OFFLINE_ENABLED
+	/* open file with offline data */ 
+	if(!OfflineInputPolicy<ExampleDataStorage>::openOfflineFile(offlineFile)) {	    
+	    msgStr << MsgStream::ERROR << "Could not open offline data file" << MsgStream::endl;
+	}
+#else
+	/* open file to store data for offline use */
+	storefile.open(offlineFile);
         /* we want to receive all destination ip address fields */
         subscribeTypeId(IPFIX_TYPEID_destinationIPv4Address);
+#endif
 
 #ifdef IDMEF_SUPPORT_ENABLED
 	/* register module */
@@ -56,38 +77,51 @@ void ExampleModule::init()
            That means: The test() methode will be called ten second after
                        the last test()-run ended
         */
+#ifdef OFFLINE_ENABLED
+        setAlarmTime(0);
+#else
         setAlarmTime(10);
+#endif
 
-        threshold = 10;
+        threshold = 1;
 
         outfile.open("first.txt");
 }
 
 ExampleModule::~ExampleModule() 
 {
-        
+	outfile.close();
+	if(storefile.is_open())
+	    storefile.close();
 }
 
 #ifdef IDMEF_SUPPORT_ENABLED
 void ExampleModule::update(XMLConfObj* xmlObj)
 {
-	std::cout << "Update received!" << std::endl;
+	msgStr << MsgStream::INFO << "Update received! ";
 	if (xmlObj->nodeExists("stop")) {
-		std::cout << "-> stoping module..." << std::endl;
+		msgStr << "-> stoping module..." << msgStr::endl;
 		stop();
 	} else if (xmlObj->nodeExists("restart")) {
-		std::cout << "-> restarting module..." << std::endl;
+		msgStr << "-> restarting module..." << msgStr::endl;
 		restart();
 	} else if (xmlObj->nodeExists("config")) {
-		std::cout << "-> updating module configuration..." << std::endl;
+		msgStr << "-> updating module configuration..." << msgStr::endl;
 	} else { // add your commands here
-		std::cout << "-> unknown operation" << std::endl;
+		msgStr << "-> unknown operation" << msgStr::endl;
 	}
 }
 #endif
 
 void ExampleModule::test(ExampleDataStorage* store) 
 {
+	msgStr.print(MsgStream::INFO, "Perform TEST");
+
+#ifndef OFFLINE_ENABLE
+	/* store data storage for offline use */
+	storefile << store;
+#endif
+    
         /* lets count the collected ip-addresses and compare
            that number to the threshold
         */

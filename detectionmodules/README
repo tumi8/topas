@@ -126,8 +126,8 @@ public:
 }
 
 ANNOTATION PER-RECORD:
-You have to inherit from DetectionBase using other template-paramters
-to enable per-Record mode. You class will look like that:
+	You have to inherit from DetectionBase using other template-parameters
+	to enable per-Record mode. You class will look like that:
 
 class MyDetectionModuleClass :  public DetectionBase<MyStorageClass, UnbufferedFilesInputPolicy<SemShmNotifier, MyStorageClass> > {
 // same as above
@@ -250,6 +250,8 @@ registerModule("MyDetectionmoduleName");
 This method connects to xmlBlaster and subscribes the module for update messages.
 Each time an update message is received, the update(XMLConfObj* xmlObj) method is called:
 
+-------------------- [ snip ] ----------------------
+
 void MyDetectionModuleClass::update(XMLConfObj* xmlObj)
 {
 	std::cout << "Update received!" << std::endl;
@@ -267,6 +269,8 @@ void MyDetectionModuleClass::update(XMLConfObj* xmlObj)
 	}
 }
 
+-------------------- [ snap ] ----------------------
+
 stop() and restart() methods are implemented in DetectionBase,
 add new functionality yourself, if needed.
 You have to call stop() or restart() if you want to stop your module. Never
@@ -281,19 +285,21 @@ c++ destructors are called).
 
 Create a main function for your programm. The function could look like this:
 
+-------------------- [ snip ] ----------------------
 
 int main(int argc, char** argv)
 {
   MyDetectionModuleClass m;
-  // or MyDetectionModuleClass m(argv[1]) if you want to use IDMEF support
+  // or MyDetectionModuleClass m(argv[1]) if you want to use a configuration
+  // file and/or IDMEF support
   return m.exec();
 }
 
-
+-------------------- [ snap ] ----------------------
 
 That's it :)
 
-There are three example detection modules that discribe the use of the
+There are three example detection modules that describe the use of the
 framework. The first and the second ones are modules that use timebased
 traffic analysis. The first one works with per-record tests.
 
@@ -305,3 +311,102 @@ braunl@informatik.uni-tuebingen.de
 
 Cheers,
 	Lothar
+	
+
+	
+			    Appendix (by Gerhard Muenz)
+			    ---------------------------
+
+A. Offline Usage of Modules
+===========================
+
+For fast testing of different test() methods (or the same method with different
+parameters), you might want to run your module offline, i.e. without collector
+and by reading the input data from a file.
+For this purpose, the OfflineInputPolicy (detectionbase/offlinepolicy.h) is
+provided. To use your module with this policy, you need change the template
+parameter of DetectionBase accordingly:
+
+class MyDetectionModuleClass : public DetectionBase<MyStorageClass, OfflineInputPolicy<MyStorageClass> > {
+    ...
+}
+
+Furthermore, you need to open the file which contains the input data calling 
+the following static method in your main() or module constructor:
+
+OfflineInputPolicy<MyStorageClass>::openOfflineFile("your_filename")
+
+OfflineInputPolicy is using ifstream and the operator >> to sequentially create 
+and fill objects of your storage class and call the test() method once for per
+object. In order to do so, you need to write an operator>> function for your
+storage class, looking like that:
+
+-------------------- [ snip ] ----------------------
+
+#include<fstream>
+
+std::ifstream& operator>>(std::ifstream& is, MyStorageClass* store)
+{
+    ...
+    return is;
+}
+
+-------------------- [ snap ] ----------------------
+
+It is also your job to find an appropriate format that allows storing the 
+storage object data in the file and also separates one object from the other.
+
+Have a look at the first example module to see how OfflineInputPolicy can be
+used. If you build the module normally, it saves the storage objects to a
+file. You can change Makefile options executing 
+
+$ make edit_cache 
+
+in the module directory. Change option "OFFLINE" to "ON" rebuild your
+module (now with #define OFFLINE_ENABLED):
+
+$ make
+
+After, you can execute the module from the command line directly:
+
+$ ./examplemodule
+or
+$ ./examplemodule your_configfile
+
+Note that you only speed up the test runs if the alarm time is set to zero:
+setAlarmTime(0). Note also, that the working directory is not changed any more
+according to the setting in your collector config file (collector.xml), i.e.
+you might need to use absolute paths with your offline file name or call your 
+module from the working dir.
+
+
+B. MsgStream
+============
+
+For terminal output, you can use the MsgStream class (commonutils/msgstream.h)
+within your modules. A global MsgStream object "msgStr" is part of the 
+DetectionBase (detectionbase.cpp) and is also declared in DataStore as extern
+object. Consequently, you can directly use it within your module and storage
+classes, either using streaming operator, e.g.:
+
+msgStr << MsgStream::ERROR << "This is an error" << MsgStream::endl;
+
+or calling the method void print(MsgLevel level, const std::string& msg),
+e.g.:
+
+msgStr.print(MsgStream::ERROR, "This is an error");
+
+There are five message levels: FATAL, ERROR, WARN, INFO, DEBUG
+The default level is WARN, which means that FATAL, ERROR and WARN level
+messages are printed. You can change the messaging level with setLevel(MsgLevel),
+e.g.:
+
+msgStr.setLevel(MsgStream::INFO);
+
+The method setName(const std::string&) sets a name (typically the module or
+program name) which is included in every output.
+
+msgStr.setName("My Module Name");
+
+Have a look at the first example module, where msgStr is extensively used.
+

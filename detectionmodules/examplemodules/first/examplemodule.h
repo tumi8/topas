@@ -1,5 +1,6 @@
 /**************************************************************************/
 /*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*                            Gerhard Muenz                               */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -19,17 +20,21 @@
 #ifndef _EXAMPLEMODULE_H_
 #define _EXAMPLEMODULE_H_
 
-#include<signal.h>
+#include <signal.h>
 
 #include "exampledatastorage.h"
-
 
 #include <detectionbase.h>
 
 #include <fstream>
 
 
-class ExampleModule : public DetectionBase<ExampleDataStorage> 
+class ExampleModule
+#ifdef OFFLINE_ENABLED
+	: public DetectionBase<ExampleDataStorage, OfflineInputPolicy<ExampleDataStorage> >
+#else
+	: public DetectionBase<ExampleDataStorage> 
+#endif
 {
  public:
         ExampleModule();
@@ -63,6 +68,7 @@ private:
         int threshold;
 	
         std::ofstream outfile;
+        std::ofstream storefile;
 	
 	/**
 	 * Signal handlers

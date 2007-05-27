@@ -18,6 +18,8 @@
 
 #include "examplemodule.h"
 
+#include <ipaddress.h>
+
 #include <iostream>
 
 ExampleModule::ExampleModule() 

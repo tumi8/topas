@@ -1,5 +1,6 @@
 /**************************************************************************/
 /*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*                            Gerhard Muenz                               */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -21,10 +22,10 @@
 
 #include <map>
 #include <vector>
-#include <ostream>
+#include <fstream>
 #include <stdexcept>
 #include <datastore.h>
-#include <iostream>
+#include <ipaddress.h>
 
 
 class ExampleDataStorage : public DataStore 
@@ -44,7 +45,7 @@ class ExampleDataStorage : public DataStore
          * Returns IpAddress at given postition.
          * No range check will be performed.
          */
-        IpAddress operator[](unsigned i) 
+        IpAddress operator[](unsigned i) const
         {
                 return addresses[i];
         }
@@ -53,10 +54,13 @@ class ExampleDataStorage : public DataStore
          * Returns size of data vector
          * @return size of data vector
          */
-        unsigned size() 
+        unsigned size() const
         {
                 return addresses.size();
         }
+
+	friend std::ofstream& operator<<(std::ofstream& os, const ExampleDataStorage* store);
+	friend std::ifstream& operator>>(std::ifstream& is, ExampleDataStorage* store);
 
  private:
         std::vector<IpAddress> addresses;

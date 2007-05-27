@@ -21,9 +21,6 @@
 
 #include <cassert>
 
-#include <commonutils/msgstream.h>
-
-extern MsgStream ms;
 
 BloomFilter CountStore::bfilter;
 bool CountStore::countPerSrcIp = false;
@@ -45,7 +42,7 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 		flowKey.append(fieldData, 4); // we ignore the netmask
 	    }
 	    else
-		ms.print(MsgStream::ERROR, "IP address field too short.");
+		msgStr.print(MsgStream::ERROR, "IP address field too short.");
 	    break;
 	case IPFIX_TYPEID_destinationIPv4Address:
 	    /* fieldDataLength == 5 means fieldData == xxx.yyy.zzz/aa (ip address and netmask)
@@ -57,7 +54,7 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 		flowKey.append(fieldData, 4); // we ignore the netmask
 	    }
 	    else
-		ms.print(MsgStream::ERROR, "IP address field too short.");
+		msgStr.print(MsgStream::ERROR, "IP address field too short.");
 	    break;
 	case IPFIX_TYPEID_sourceTransportPort:
 	    if (fieldDataLength == 2)
@@ -66,7 +63,7 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 		flowKey.append(fieldData, 2);
 	    }
 	    else
-		ms.print(MsgStream::ERROR, "Invalid port field length.");
+		msgStr.print(MsgStream::ERROR, "Invalid port field length.");
 	    break;
 	case IPFIX_TYPEID_destinationTransportPort:
 	    if (fieldDataLength == 2)
@@ -75,7 +72,7 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 		flowKey.append(fieldData, 2);
 	    }
 	    else
-		ms.print(MsgStream::ERROR, "Invalid port field length.");
+		msgStr.print(MsgStream::ERROR, "Invalid port field length.");
 	    break;
 	case IPFIX_TYPEID_protocolIdentifier:
 	    if (fieldDataLength == 1)
@@ -85,7 +82,7 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 		flowKey.append(fieldData, 1);
 	    }
 	    else
-		ms.print(MsgStream::ERROR, "Invalid protocol field length.");
+		msgStr.print(MsgStream::ERROR, "Invalid protocol field length.");
 	    break;
 	case IPFIX_TYPEID_octetDeltaCount:
 	    octets = fieldToInt(fieldData, fieldDataLength);
@@ -150,39 +147,39 @@ void CountStore::recordEnd()
     }
 
     if(newFlowKey)
-	ms.print(MsgStream::INFO, "New record received: IP-5-tuple is new.");
+	msgStr.print(MsgStream::INFO, "New record received: IP-5-tuple is new.");
     else
-	ms.print(MsgStream::INFO, "New record received: IP-5-tuple is already known.");
+	msgStr.print(MsgStream::INFO, "New record received: IP-5-tuple is already known.");
 	
     if(newFlowKey != newFlowKeyBf)
-	ms.print(MsgStream::WARN, "There was a bloomfilter collision!");
+	msgStr.print(MsgStream::WARN, "There was a bloomfilter collision!");
 
     // now update the tables
     // SrcIp
     if(countPerSrcIp)
     {
-	ms << MsgStream::INFO << "SrcIp: ";
+	msgStr << MsgStream::INFO << "SrcIp: ";
 	updateIpCountMap(srcIpCounts, srcIpIter, srcIp, newFlowKey);
     }
 
     // DstIp
     if(countPerDstIp)
     {
-	ms << MsgStream::INFO << "DstIp: ";
+	msgStr << MsgStream::INFO << "DstIp: ";
 	updateIpCountMap(dstIpCounts, dstIpIter, dstIp, newFlowKey);
     }
 
     // SrcPort
     if(countPerSrcPort)
     {
-	ms << MsgStream::INFO << "SrcPort: ";
+	msgStr << MsgStream::INFO << "SrcPort: ";
 	updatePortCountMap(srcPortCounts, srcPortIter, srcPort, newFlowKey);
     }
 
     // DstPort
     if(countPerDstPort)
     {
-	ms << MsgStream::INFO << "DstPort: ";
+	msgStr << MsgStream::INFO << "DstPort: ";
 	updatePortCountMap(dstPortCounts, dstPortIter, dstPort, newFlowKey);
     }
 
@@ -195,23 +192,23 @@ void CountStore::updateIpCountMap(IpCountMap& countmap, IpCountMap::iterator& it
     {
 	if(newFlowKey) 
 	{
-	    ms << "Update octets, packets, and flows.";
+	    msgStr << "Update octets, packets, and flows.";
 	    iter->second.update(octets, packets, 1);
 	}
 	else
 	{
-	    ms << "Update octets and packets only.";
+	    msgStr << "Update octets and packets only.";
 	    iter->second.update(octets, packets, 0);
 	}
     }
     else if(countmap.size() < (countmap.max_size()-1))
     {
-	ms << "Create new table entry.";
+	msgStr << "Create new table entry.";
 	countmap.insert(std::pair<IpAddress,Counters>(addr, Counters(octets, packets, 1)));
     }
     else
     {
-	ms << "I'm out of memory. Update default table entry.";
+	msgStr << "I'm out of memory. Update default table entry.";
 	if((iter = countmap.find(IpAddress(0,0,0,0))) != countmap.end())
 	{
 	    if(newFlowKey)
@@ -225,7 +222,7 @@ void CountStore::updateIpCountMap(IpCountMap& countmap, IpCountMap::iterator& it
 
     if(CountModule::verbose)
 	if((iter = countmap.find(addr)) != countmap.end())
-	    ms << " Table entry: " << iter->first.toString().c_str() 
+	    msgStr << " Table entry: " << iter->first.toString().c_str() 
 		<< " o:"<< iter->second.octetCount <<" p:" << iter->second.packetCount << " f:" << iter->second.flowCount
 		<< MsgStream::endl;
 }
@@ -236,23 +233,23 @@ void CountStore::updatePortCountMap(PortCountMap& countmap, PortCountMap::iterat
     {
 	if(newFlowKey) 
 	{
-	    ms << "Update octets, packets, and flows.";
+	    msgStr << "Update octets, packets, and flows.";
 	    iter->second.update(octets, packets, 1);
 	}
 	else
 	{
-	    ms << "Update octets and packets only.";
+	    msgStr << "Update octets and packets only.";
 	    iter->second.update(octets, packets, 0);
 	}
     }
     else if(countmap.size() < (countmap.max_size()-1))
     {
-	ms << "Create new table entry.";
+	msgStr << "Create new table entry.";
 	countmap.insert(std::pair<ProtoPort,Counters>(port, Counters(octets, packets, 1)));
     }
     else
     {
-	ms << "I'm out of memory. Update default table entry.";
+	msgStr << "I'm out of memory. Update default table entry.";
 	if((iter = countmap.find(0)) != countmap.end())
 	{
 	    if(newFlowKey)
@@ -266,7 +263,7 @@ void CountStore::updatePortCountMap(PortCountMap& countmap, PortCountMap::iterat
     
     if(CountModule::verbose)
 	if((iter = countmap.find(port)) != countmap.end())
-	    ms << " Table entry: " << (iter->first >> 16) << "." << (iter->first & 0x0000FFFF)
+	    msgStr << " Table entry: " << (iter->first >> 16) << "." << (iter->first & 0x0000FFFF)
 		<< " o:"<< iter->second.octetCount <<" p:" << iter->second.packetCount << " f:" << iter->second.flowCount
 		<< MsgStream::endl;
 }

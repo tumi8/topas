@@ -24,18 +24,17 @@
 
 #include <iostream>
 #include <cstdlib>
-#include <commonutils/msgstream.h>
 
-MsgStream ms(MsgStream::WARN, "CountModule");
 
-/* demonstrates the use of libdetectionModule */
 int main(int argc, char** argv) 
 {
+    msgStr.setName("CountModule");
+
     if (argc == 2) {
 	CountModule m(argv[1]);
 	return m.exec();
     }
 
-    ms.print(MsgStream::ERROR, "Configuration file argument is missing!");
+    msgStr.print(MsgStream::ERROR, "Configuration file argument is missing!");
     exit(-1);
 }

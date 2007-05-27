@@ -18,11 +18,6 @@
 
 #include "datastore.h"
 
-
-#include <ostream>
-#include <sstream>
-
-
 uint64_t DataStore::fieldToInt(byte* data, unsigned len) 
 {
         switch (len) {
@@ -39,17 +34,3 @@ uint64_t DataStore::fieldToInt(byte* data, unsigned len)
         }
 }
 
-
-std::string IpAddress::toString() const
-{
-        std::stringstream sstream;
-        sstream << address[0] << "." << address[1] << "." << address[2] << "." << address[3];
-        return sstream.str();
-}
-
-
-std::ostream& operator<<(std::ostream& ost, const IpAddress& ip) 
-{
-        ost << ip[0] << "." << ip[1] << "." << ip[2] << "." << ip[3];
-        return ost;
-}
