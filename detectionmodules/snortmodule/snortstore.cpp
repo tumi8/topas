@@ -37,7 +37,7 @@ SnortStore::SnortStore():is_valid(false) {
 }
 
 SnortStore::~SnortStore() {
-delete packet;
+	delete packet;
 }
 
 void SnortStore::addFieldData(int id, byte* fieldData, int fieldDataLength, EnterpriseNo eid) {
@@ -128,6 +128,11 @@ void SnortStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 		//Timestamps
 		case	IPFIX_TYPEID_flowStartSeconds:
 			packet->ts_sec = (uint32_t)fieldToInt(fieldData, fieldDataLength);
+			break;
+		case	IPFIX_TYPEID_flowStartMilliSeconds:
+			mstime = fieldToInt(fieldData, fieldDataLength);
+			packet->ts_sec = (uint32_t)(mstime/1000);
+			packet->ts_usec = (uint32_t)((mstime - packet->ts_sec*1000) * 1000);
 			break;
 		case	IPFIX_TYPEID_flowStartMicroSeconds:
 			packet->ts_usec = (uint32_t)fieldToInt(fieldData, fieldDataLength);

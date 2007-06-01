@@ -69,6 +69,7 @@ Snortmodule::Snortmodule(const std::string& filename) : DetectionBase<SnortStore
 	subscribeTypeId(314);//PSAMP_TYPEID_ipPayloadPacketSection  
 
 	subscribeTypeId(IPFIX_TYPEID_flowStartSeconds);
+	subscribeTypeId(IPFIX_TYPEID_flowStartMilliSeconds);
 	subscribeTypeId(IPFIX_TYPEID_flowStartMicroSeconds);
 	msg(MSG_DIALOG, "Snortmodule: Warning! I will interprete flowStartMicroSeconds as complement for flowStartSeconds (deviating from IPFIX info model).");
 

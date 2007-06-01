@@ -43,6 +43,7 @@ public:
 	bool is_valid;	
 private:
 	PcapPacket *packet; 
+	uint64_t mstime;
 
 };
 
