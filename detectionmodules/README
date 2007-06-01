@@ -363,7 +363,7 @@ file. You can change Makefile options executing
 $ make edit_cache 
 
 in the module directory. Change option "OFFLINE" to "ON" rebuild your
-module (now with #define OFFLINE_ENABLED):
+module (now with OFFLINE_ENABLED defined):
 
 $ make
 

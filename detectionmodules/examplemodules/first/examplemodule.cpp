@@ -117,7 +117,7 @@ void ExampleModule::test(ExampleDataStorage* store)
 {
 	msgStr.print(MsgStream::INFO, "Perform TEST");
 
-#ifndef OFFLINE_ENABLE
+#ifndef OFFLINE_ENABLED
 	/* store data storage for offline use */
 	storefile << store;
 #endif
