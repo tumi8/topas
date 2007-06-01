@@ -17,9 +17,6 @@
 /**************************************************************************/
 
 #include "bloomfilter.h"
-#include <vector>
-#include <stdlib.h>
-#include <time.h>
 
 const uint8_t bitmask[8] =
 {
