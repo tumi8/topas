@@ -39,7 +39,8 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 	    if(fieldDataLength>=4)
 	    {
 		srcIp.setAddress(fieldData);
-		flowKey.append(fieldData, 4); // we ignore the netmask
+		//flowKey.append(fieldData, 4); // we ignore the netmask
+		flowKey.getQuintuple()->srcIp = *((uint32_t*)fieldData); // we ignore the netmask
 	    }
 	    else
 		msgStr.print(MsgStream::ERROR, "IP address field too short.");
@@ -51,7 +52,8 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 	    if(fieldDataLength>=4)
 	    {
 		dstIp.setAddress(fieldData);
-		flowKey.append(fieldData, 4); // we ignore the netmask
+		//flowKey.append(fieldData, 4); // we ignore the netmask
+		flowKey.getQuintuple()->dstIp = *((uint32_t*)fieldData); // we ignore the netmask
 	    }
 	    else
 		msgStr.print(MsgStream::ERROR, "IP address field too short.");
@@ -60,7 +62,8 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 	    if (fieldDataLength == 2)
 	    {
 		srcPort = (srcPort & 0xFFFF0000) + ntohs(*(uint16_t*)fieldData);
-		flowKey.append(fieldData, 2);
+		//flowKey.append(fieldData, 2);
+		flowKey.getQuintuple()->srcPort = *((uint16_t*)fieldData);
 	    }
 	    else
 		msgStr.print(MsgStream::ERROR, "Invalid port field length.");
@@ -69,7 +72,8 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 	    if (fieldDataLength == 2)
 	    {
 		dstPort = (dstPort & 0xFFFF0000) + ntohs(*(uint16_t*)fieldData);
-		flowKey.append(fieldData, 2);
+		//flowKey.append(fieldData, 2);
+		flowKey.getQuintuple()->dstPort = *((uint16_t*)fieldData);
 	    }
 	    else
 		msgStr.print(MsgStream::ERROR, "Invalid port field length.");
@@ -79,7 +83,8 @@ void CountStore::addFieldData(int id, byte* fieldData, int fieldDataLength, Ente
 	    {
 		srcPort = (srcPort & 0x0000FFFF) + ((*fieldData)<<16);
 		dstPort = (dstPort & 0x0000FFFF) + ((*fieldData)<<16);
-		flowKey.append(fieldData, 1);
+		//flowKey.append(fieldData, 1);
+		flowKey.getQuintuple()->proto = *((uint8_t*)fieldData);
 	    }
 	    else
 		msgStr.print(MsgStream::ERROR, "Invalid protocol field length.");

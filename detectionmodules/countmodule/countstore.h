@@ -28,53 +28,6 @@
 #include <iostream>
 #include "bloomfilter.h"
 
-template<unsigned size> class GenericKey
-{
-    public:
-	unsigned len;
-	uint8_t data[size];
-
-	GenericKey() : len(0) {
-	    memset(data,0,sizeof(data));
-	}
-
-	void set(uint8_t *input, unsigned inputlen)
-	{
-	    len = inputlen<sizeof(data)?inputlen:sizeof(data);
-	    memcpy(&data, input, len);
-	}
-
-	void reset()
-	{
-	    len = 0;
-	    memset(data,0,sizeof(data));
-	}
-	
-	void append(uint8_t *input, unsigned inputlen)
-	{
-	    if(len<sizeof(data)) {
-		if((len+inputlen) < sizeof(data)) {
-		    memcpy(&(data[len]), input, inputlen);
-		    len = len + inputlen;
-		} else {
-		    memcpy(&(data[len]), input, sizeof(data)-len);
-		    len = sizeof(data);
-		}
-	    }
-	}
-	
-	bool operator<(const GenericKey& other) const 
-	{
-	    if(len < other.len)
-		return true;
-	    else if(len > other.len)
-		return false;
-	    else
-		return memcmp(data, other.data, len)<0?true:false;
-	}
-
-};
-
 
 struct Counters {
     public:
@@ -97,7 +50,7 @@ struct Counters {
 class CountStore : public DataStore 
 {
     public:
-	typedef GenericKey<15> FiveTuple;
+	//typedef GenericKey<15> FiveTuple;
 	typedef std::map<IpAddress, Counters> IpCountMap;
 	typedef std::map<uint32_t, Counters> PortCountMap;
 	typedef uint32_t ProtoPort;
@@ -147,7 +100,8 @@ class CountStore : public DataStore
 	ProtoPort  srcPort, dstPort;
 	uint64_t octets, packets;
 
-	FiveTuple flowKey;
+	//FiveTuple flowKey;
+	QuintupleKey flowKey;
 
 	bool recordStarted;
 };

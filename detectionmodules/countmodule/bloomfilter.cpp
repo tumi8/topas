@@ -71,6 +71,47 @@ std::ostream & operator << (std::ostream & os, const Bitmap & b)
 }
 
 
+void HashFunctions::initHF()
+{
+    free(hf_list);
+    hf_list = NULL;
+
+    if(hf_number > 0)
+    {
+	hf_list = (hash_params*) calloc(sizeof(hash_params), hf_number);
+	srand(time(0));
+	for(unsigned i=0; i < hf_number; i++)
+	{
+	    hf_list[i].seed = rand();
+	}
+    }
+}
+
+uint32_t HashFunctions::hashU(uint8_t* input, uint16_t len, uint32_t max, uint32_t seed) const
+{
+    uint32_t random;
+    uint32_t result = 0;
+    gsl_rng_set(r, seed);
+    for(unsigned i = 0; i < len; i++) {
+	random = gsl_rng_get (r);
+	result = (random*result + input[i]);
+    }
+    return result % max;
+}
+
+uint32_t HashFunctions::ggT(uint32_t m, uint32_t n)
+{
+    uint32_t z;
+    while (n>0)
+    {
+	z=n;
+	n=m%n;
+	m=z;
+    }
+    return m;
+}
+
+
 void BloomFilter::init(uint32_t size, unsigned hashfunctions)
 {
     hf_number = hashfunctions;
@@ -111,46 +152,6 @@ bool BloomFilter::testBeforeInsert(uint8_t* input, unsigned len)
 	filter.set(index);
     }
     return result;
-}
-
-void BloomFilter::initHF()
-{
-    free(hf_list);
-    hf_list = NULL;
-
-    if(hf_number > 0)
-    {
-	hf_list = (hash_params*) calloc(sizeof(hash_params), hf_number);
-	srand(time(0));
-	for(unsigned i=0; i < hf_number; i++)
-	{
-	    hf_list[i].seed = rand();
-	}
-    }
-}
-
-uint32_t BloomFilter::hashU(uint8_t* input, uint16_t len, uint32_t max, uint32_t seed) const
-{
-    uint32_t random;
-    uint32_t result = 0;
-    gsl_rng_set(r, seed);
-    for(unsigned i = 0; i < len; i++) {
-	random = gsl_rng_get (r);
-	result = (random*result + input[i]);
-    }
-    return result % max;
-}
-
-uint32_t BloomFilter::ggT(uint32_t m, uint32_t n)
-{
-    uint32_t z;
-    while (n>0)
-    {
-	z=n;
-	n=m%n;
-	m=z;
-    }
-    return m;
 }
 
 std::ostream & operator << (std::ostream & os, const BloomFilter & b) 
