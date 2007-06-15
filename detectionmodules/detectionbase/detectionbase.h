@@ -104,9 +104,10 @@ class DetectionBase
 							props.push_back(confObj->getNextValue());
 						}
 					} else {
-						std::cerr << "No <" << config_space::XMLBLASTER_PROP 
+						msgStr << MsgStream::WARN << "No <" << config_space::XMLBLASTER_PROP 
 							  << "> statement in config file, using default values"
-							  << std::endl;
+							  << MsgStream::endl;
+
 					}
 					for (unsigned i = 0; i != props.size(); ++i) {
 						unsigned seperatorPos;
@@ -126,11 +127,11 @@ class DetectionBase
  					confObj->leaveNode();
 				}
 			} else {
-				std::cerr << "No <" << config_space::XMLBLASTER << "> statement in config file" << std::endl;
+				msgStr << MsgStream::WARN << "No <" << config_space::XMLBLASTER << "> statement in config file" << MsgStream::endl;
 			}
 			
                 } else {
-                        std::cerr << "No <" << config_space::XMLBLASTERS << "> statement in config file" << std::endl;
+                        msgStr << MsgStream::WARN << "No <" << config_space::XMLBLASTERS << "> statement in config file" << MsgStream::endl;
                 }
                 
                 /* connect to all xmlBlaster servers */
@@ -140,10 +141,10 @@ class DetectionBase
 				comm->connect();
 				commObjs.push_back(comm);
 			} catch (const XmlBlasterException &e) {
-				std::cerr << "Cannot connect to xmlBlaster: " << std::endl
-					  << e.toXml() << std::endl
-					  << "Make sure, the xmlBlaster server is up and running." 
-					  << std::endl;
+				msgStr << MsgStream::FATAL << "Cannot connect to xmlBlaster: "
+					  << e.toXml()
+					  << ". Make sure, the xmlBlaster server is up and running." 
+					  << MsgStream::endl;
 			        throw std::runtime_error("Cannot connect to xmlBlaster: \n" + e.toXml()
 							 + "\nMake sure, the xmlBlaster server is up and running.");
 			}                                    
@@ -210,6 +211,18 @@ class DetectionBase
          */
         int exec() 
         {
+		// check if stop() was called during before calling exec()
+		if (state == EXIT) {
+			msgStr << MsgStream::INFO << "stop() called during module initialization! Exiting." << MsgStream::endl;
+			return 0;
+		}
+		else if (state == RESTART) {
+			msgStr << MsgStream::INFO << "restart() called during module initialization! Exiting." << MsgStream::endl;
+			return -1;
+		}
+		
+
+
                 state = RUN;
                 pthread_create(&testThread, NULL,
 			       DetectionBase<DataStorage, InputPolicy>::testThreadFunc, this);
@@ -540,6 +553,6 @@ InputPolicy DetectionBase<DataStorage, InputPolicy>::inputPolicy;
 template<class DataStorage, class InputPolicy>
 volatile typename DetectionBase<DataStorage, InputPolicy>::State
 	DetectionBase<DataStorage, InputPolicy>::state = 
-		(typename DetectionBase<DataStorage, InputPolicy>::State)0;
+		(typename DetectionBase<DataStorage, InputPolicy>::State)0; // RUN
 
 #endif

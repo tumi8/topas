@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 	<snortmodule>
-		<fifo>/tmp/snortfifo</fifo>
+		<fifo>/tmp/topasfifo</fifo>
 		<calculate_ipheader_checksum>true</calculate_ipheader_checksum>
 		<calculate_transportheader_checksum>true</calculate_transportheader_checksum>
-		<execute>/usr/bin/ethereal -k -S -l -i /tmp/snortfifo</execute>
+		<execute>/usr/bin/ethereal -k -S -i /tmp/topasfifo</execute>
 		<debug_level>4</debug_level>
 	</snortmodule>
 	<xmlwrapper>
