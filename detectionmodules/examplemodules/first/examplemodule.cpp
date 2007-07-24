@@ -100,15 +100,15 @@ void ExampleModule::update(XMLConfObj* xmlObj)
 {
 	msgStr << MsgStream::INFO << "Update received! ";
 	if (xmlObj->nodeExists("stop")) {
-		msgStr << "-> stoping module..." << msgStr::endl;
+		msgStr.print(MsgStream::INFO, "Update: Stopping module.");
 		stop();
 	} else if (xmlObj->nodeExists("restart")) {
-		msgStr << "-> restarting module..." << msgStr::endl;
+		msgStr.print(MsgStream::INFO, "Update: Restarting module.");
 		restart();
 	} else if (xmlObj->nodeExists("config")) {
-		msgStr << "-> updating module configuration..." << msgStr::endl;
+		msgStr.print(MsgStream::INFO, "Update: Changing module configuration.");
 	} else { // add your commands here
-		msgStr << "-> unknown operation" << msgStr::endl;
+		msgStr.print(MsgStream::INFO, "Update: Unsupported operation.");
 	}
 }
 #endif
