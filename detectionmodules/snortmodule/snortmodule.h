@@ -105,7 +105,7 @@ private:
 		void * module;
 		std::string topic;
 		std::string analyzerid;
-		std::string manufacturer;
+		std::string analyzer_node_ident;
 	};
 
 	static wrapperConfig_t wrapperConfig;

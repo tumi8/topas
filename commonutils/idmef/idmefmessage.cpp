@@ -75,9 +75,10 @@ void IdmefMessage::createAlertBody()
         /* create the default IDMEF-Message <Alert> body */
         idmefMessage =
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?> \n"
-                "<!DOCTYPE IDMEF-Message PUBLIC \"-//IETF//DTD RFC XXXX IDMEF v1.0//EN\" \"idmef-message.dtd\" \n"
-                "[<!ENTITY % x-diadem SYSTEM \"diadem.dtd\"> %x-diadem; ]>\n"
-                "<IDMEF-Message version=\"1.0\" xmlns=\"http://iana.org/idmef\">\n"
+//                 "<!DOCTYPE IDMEF-Message PUBLIC \"-//IETF//DTD RFC XXXX IDMEF v1.0//EN\" \"idmef-message.dtd\" \n"
+//                 "[<!ENTITY % x-diadem SYSTEM \"diadem.dtd\"> %x-diadem; ]>\n"
+//                 "<IDMEF-Message version=\"1.0\" xmlns=\"http://iana.org/idmef\">\n"
+                "<IDMEF-Message version=\"1.0\">\n"
                 "<Alert messageid=\"0\">\n"
                 "<Analyzer name=\"" + analyzerName + "\" analyzerid=\"" + analyzerId + "\" "
 		"manufacturer=\"\" model=\"\" version=\"\" class=\"\" ostype=\"\" osversion=\"\"/>\n"
@@ -91,7 +92,6 @@ void IdmefMessage::createAlertBody()
                 "</IDMEF-Message>";
 
         /* register multiple nodes */
-        multipleNodes.push_back("Node");
         multipleNodes.push_back("Address");
         multipleNodes.push_back("DIADEM:ObservationPoint");
 	multipleNodes.push_back("Service");
@@ -103,9 +103,10 @@ void IdmefMessage::createHeartbeatBody()
         /* create the default IDMEF-Message <Heartbeat> body */
         idmefMessage =
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?> \n"
-                "<!DOCTYPE IDMEF-Message PUBLIC \"-//IETF//DTD RFC XXXX IDMEF v1.0//EN\" \"idmef-message.dtd\" \n"
-                "[<!ENTITY % x-diadem SYSTEM \"diadem.dtd\"> %x-diadem; ]>\n"
-                "<IDMEF-Message version=\"1.0\" xmlns=\"http://iana.org/idmef\">\n"
+//                 "<!DOCTYPE IDMEF-Message PUBLIC \"-//IETF//DTD RFC XXXX IDMEF v1.0//EN\" \"idmef-message.dtd\" \n"
+//                 "[<!ENTITY % x-diadem SYSTEM \"diadem.dtd\"> %x-diadem; ]>\n"
+//                 "<IDMEF-Message version=\"1.0\" xmlns=\"http://iana.org/idmef\">\n"
+                "<IDMEF-Message version=\"1.0\">\n"
                 "<Heartbeat messageid=\"0\">\n"
                 "<Analyzer name=\"" + analyzerName + "\" analyzerid=\"" + analyzerId + "\" "
 		"manufacturer=\"\" model=\"\" version=\"\" class=\"\" ostype=\"\" osversion=\"\"/>\n"
@@ -134,7 +135,7 @@ void IdmefMessage::createAnalyzerNode(const std::string& category, const std::st
                 std::cerr << "Error: creating <Node> node failed" << std::endl;
                 return;
         }
-        setIdmefNodeAttr(currNode, "Node", "category", "unknown");
+        //setIdmefNodeAttr(currNode, "Node", "category", "unknown");
 
         if (location != "NULL")
                 createIdmefNode(currNode, "location", location);
@@ -172,6 +173,11 @@ void IdmefMessage::setAnalyzerAttr(const std::string& analyzerClass, const std::
         setIdmefNodeAttr(messageType, "Analyzer", "manufacturer", manufacturer);
         setIdmefNodeAttr(messageType, "Analyzer", "model", model);
         setIdmefNodeAttr(messageType, "Analyzer", "version", version); 
+}
+
+void IdmefMessage::setAnalyzerNodeIdAttr(const std::string& ident)
+{
+        setIdmefNodeAttr("Analyzer", "Node", "ident", ident);
 }
 
 void IdmefMessage::createCreateTimeNode()
@@ -213,7 +219,7 @@ void IdmefMessage::createTargetNode(const std::string& decoy, const std::string&
         setIdmefNodeAttr(currNode, "Address", "category", category);
 
         createIdmefNode(currNode, "address", address);
-        createIdmefNode(currNode, "netmask", netmask);
+	createIdmefNode(currNode, "netmask", netmask);
 }
 
 void IdmefMessage::createServiceNode(const std::string& nodeName, const std::string& name, const std::string& port,
@@ -232,11 +238,18 @@ void IdmefMessage::createServiceNode(const std::string& nodeName, const std::str
 	setIdmefNodeAttr(currNode, "Service", "iana_protocol_number", "");
 	setIdmefNodeAttr(currNode, "Service", "iana_protocol_name", "");
 
-	createIdmefNode(currNode, "name", name);
-	createIdmefNode(currNode, "port", port);
-	if (portlist != "")
+	if (name != "") {
+		createIdmefNode(currNode, "name", name);
+	}
+	if (port != "") {
+		createIdmefNode(currNode, "port", port);
+	}
+	if (portlist != "") {
 		createIdmefNode(currNode, "portlist", portlist);
-	createIdmefNode(currNode, "protocol", name);
+	}
+	if (protocol != "") {
+		createIdmefNode(currNode, "protocol", protocol);
+	}
 }
 
 void IdmefMessage::setServiceNodeAttr(const std::string& nodeName, const std::string& ident, 

@@ -100,8 +100,8 @@ private:
 	XmlBlasterAccess con;
 	/* The string identifying this class when logging */
 	std::string ME;
-	/* Update message content */
-	std::string updateMessage;
+	/* Update messages fifo queue */
+	std::vector<std::string> updateMessages;
 	/* */
 	bool updateAvailable;
 	/* Mutex variable */

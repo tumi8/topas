@@ -5,4 +5,5 @@
 - Topas: automatisches Senden von Heartbeat-Nachrichten (collector und Module)
 - Topas: Nachrichten-Format fuer topas, module -> manager ueberarbeiten
 - Detectionmodule: Topic von Angriffsmeldungen in der Konfig-Datei festlegen
+- Detectionbase: beim Modulnamen Gross- Kleinschreibung ignorieren
 

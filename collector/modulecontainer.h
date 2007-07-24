@@ -66,7 +66,7 @@ public:
         void restartCrashedModule(pid_t pid, DetectModExporter* exporter);
 
         /**
-         * Removes detection module with pid pid from the list of stored and managed detectio modules
+         * Removes detection module with pid pid from the list of stored and managed detection modules
          * @praram pid pid of detection module to remove
          */
         void deleteModule(pid_t pid);

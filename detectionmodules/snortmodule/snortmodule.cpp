@@ -179,7 +179,7 @@ void Snortmodule::init(){
 	registerModule("snortmodule");
 	/* set analyzerid and manufacturer */
 	wrapperConfig.analyzerid = getModuleId();
-	wrapperConfig.manufacturer = getTopasId();
+	wrapperConfig.analyzer_node_ident = getTopasId();
 #endif
 
 }
@@ -221,7 +221,7 @@ void Snortmodule::update(XMLConfObj* xmlObj)
 		char* line = NULL;
 		inputStream.open(config_file.c_str(), std::ios::in);
 		if (!inputStream) {
-			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+			sendControlMessage("<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>Snortmodule: Can't open \"" +
 					   config_file + "\"</result>");
 		} else {
 			std::string message;
@@ -229,7 +229,7 @@ void Snortmodule::update(XMLConfObj* xmlObj)
 			while (std::getline(inputStream, line)) {
 				message += line + "\n";
 			}
-			message = "<result>" + message + "</result>";
+			message = "<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>" + message + "</result>";
 			sendControlMessage(message);
 			inputStream.close();
 		}
@@ -257,7 +257,7 @@ void Snortmodule::update(XMLConfObj* xmlObj)
 		char* line = NULL;
 		inputStream.open(rule_file.c_str(), std::ios::in);
 		if (!inputStream) {
-			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+			sendControlMessage("<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>Snortmodule: Can't open \"" +
 					   rule_file + "\"</result>");
 		} else {
 			std::string message;
@@ -265,7 +265,7 @@ void Snortmodule::update(XMLConfObj* xmlObj)
 			while (std::getline(inputStream, line)) {
 				message += line + "\n";
 			}
-			message = "<result>" + message  + "</result>";
+			message = "<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>" + message  + "</result>";
 			sendControlMessage(message);
 			inputStream.close();
 		}
@@ -276,12 +276,12 @@ void Snortmodule::update(XMLConfObj* xmlObj)
 		std::ofstream outputStream;
 		outputStream.open(rule_file.c_str(), std::ios::trunc);
 		if (!outputStream) {
-			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+			sendControlMessage("<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>Snortmodule: Can't open \"" +
 					   rule_file + "\" for writing</result>");
 		} else {
 			std::string message = xmlObj->getValue(UPDATE_SNORT_RULE_FILE);
 			outputStream.write(message.c_str(), message.size());
-			message = "<result>Update successful</result>";
+			message = "<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>Update successful</result>";
 			sendControlMessage(message);
 			outputStream.close();
 		}
@@ -292,12 +292,12 @@ void Snortmodule::update(XMLConfObj* xmlObj)
 		std::ofstream outputStream;
 		outputStream.open(rule_file.c_str(), std::ios::app);
 		if (!outputStream) {
-			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+			sendControlMessage("<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>Snortmodule: Can't open \"" + 
 					   rule_file + "\" for writing</result>");
 		} else {
 			std::string message = xmlObj->getValue(APPEND_SNORT_RULE_FILE);
 			outputStream.write(message.c_str(), message.size());
-			message = "<result>Update successful</result>";
+			message = "<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>Update successful</result>";
 			sendControlMessage(message);
 			outputStream.close();
 		}
@@ -308,10 +308,10 @@ void Snortmodule::update(XMLConfObj* xmlObj)
 		std::ofstream outputStream;
 		outputStream.open(rule_file.c_str(), std::ios::trunc);
 		if (!outputStream) {
-			sendControlMessage("<result>Snortmodule: Can't open \"" + 
+			sendControlMessage("<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>Snortmodule: Can't open \"" + 
 					   rule_file + "\" for writing</result>");
 		} else {
-			std::string message = "<result>Update successful</result>";
+			std::string message = "<result oid='snortmodule-" + wrapperConfig.analyzerid + "'>Update successful</result>";
 			sendControlMessage(message);
 			outputStream.close();
 		}
@@ -482,24 +482,35 @@ void * Snortmodule::xmlWrapperEntry(void *args)
 
 	}
 	    while ((read = getline(&line, &len, fp)) != -1) {
-                 if ( (std::string)line == "</IDMEF-Message>\n"){
+                 if ( (std::string)line == std::string(IDMEF_CLOSING_TAG + "\n")){
 			 message+=line;
-			 // change analyzerid and manufacturer attributes
-			 unsigned analyzeridPos, manufacturerPos;
-			 if (std::string::npos != (analyzeridPos = message.find(ANALYZERID)) 
-			     && std::string::npos != (manufacturerPos = message.find(MANUFACTURER))) {
-				 unsigned beginPos, endPos;
+			 // change some attributes
+			 unsigned analyzeridPos, analyzerNodePos, analyzerEndPos;
+			 if (std::string::npos != (analyzeridPos = message.find(IDMEF_ANALYZERID)) 
+			     && std::string::npos != (analyzerEndPos = message.find(IDMEF_ANALYZER_CLOSING_TAG))
+			     && std::string::npos != (analyzerNodePos = message.find(IDMEF_NODE_OPENING_TAG, analyzeridPos))) {
+				 unsigned beginPos, endPos, identPos;
 				 // replace analyzerid
-				 beginPos = analyzeridPos + ANALYZERID.size() + 1;
+				 beginPos = analyzeridPos + IDMEF_ANALYZERID.size() + 1;
 				 endPos = message.find('"', beginPos);
 				 message.replace(message.begin() + beginPos, message.begin() + endPos, wrapperConfig.analyzerid);
-				 // replace manufacturer
-				 manufacturerPos = message.find(MANUFACTURER);
-				 beginPos = manufacturerPos + MANUFACTURER.size() + 1;
-				 endPos = message.find('"', beginPos);
-				 message.replace(message.begin() + beginPos, message.begin() + endPos, wrapperConfig.manufacturer);
+				 // get new indexes
+				 analyzerEndPos = message.find(IDMEF_ANALYZER_CLOSING_TAG);
+				 analyzerNodePos = message.find(IDMEF_NODE_OPENING_TAG, analyzeridPos);
+				 // if the ident attribute exists, replace it
+				 if (std::string::npos != (identPos = message.find(IDMEF_NODE_IDENT, analyzeridPos))) {
+					 beginPos = identPos + IDMEF_NODE_IDENT.size() + 1;
+					 endPos = message.find('"', beginPos);
+					 message.replace(message.begin() + beginPos, message.begin() + endPos, wrapperConfig.analyzer_node_ident);
+				 } 
+				 // otherwise add ident attribute
+				 else {
+					 beginPos = analyzerNodePos + IDMEF_NODE_OPENING_TAG.size() + 1;
+					 message.insert(beginPos, std::string(IDMEF_NODE_IDENT + "\"" + wrapperConfig.analyzer_node_ident + "\" "));
+				 }
+				 
 			 } else {
-				 msg(MSG_ERROR, "Snortmodule: analyzerid or manufacturer attribute is missing");
+				 msg(MSG_ERROR, "Snortmodule: analyzerid attribute or <Node> tag is missing");
 			 }
 			 object->sendIdmefMessage(config->topic,message);
 			 message="";

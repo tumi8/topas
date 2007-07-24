@@ -109,7 +109,7 @@ std::string XmlBlasterCommObject::update(const std::string& sessionId, UpdateKey
 					 long contentSize, UpdateQos& updateQos)
 {
 	mutex.lock();
-	updateMessage = std::string((char*)content, (char*)(content) + contentSize);
+	updateMessages.push_back(std::string((char*)content, (char*)(content) + contentSize));
 	updateAvailable = true;
 	mutex.unlock();
 	return "";
@@ -120,8 +120,12 @@ std::string XmlBlasterCommObject::getUpdateMessage()
 	mutex.lock();
 	std::string copy = "";
 	if (updateAvailable) {
-		copy = updateMessage;
-		updateAvailable = false;
+		if (updateMessages.empty()) {
+			updateAvailable = false;
+		} else {
+			copy = updateMessages.back();
+			updateMessages.pop_back();			
+		}
 	}
 	mutex.unlock();
 	return copy;

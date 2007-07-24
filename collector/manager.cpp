@@ -123,7 +123,10 @@ void Manager::startModules()
                 }
         }
         /* send <Heartbeat> message to all xmlBlaster servers and subscribe for update messages */
-        IdmefMessage* currentMessage = new IdmefMessage(config_space::TOPAS, topasID, "", IdmefMessage::HEARTBEAT);
+        IdmefMessage* currentMessage = new IdmefMessage(config_space::TOPAS, "", "", IdmefMessage::HEARTBEAT);
+	currentMessage->setAnalyzerAttr("", config_space::TOPAS, "", "");
+	currentMessage->createAnalyzerNode("ipv4-addr", "127.0.0.1", "255.255.255.255", "B305");
+	currentMessage->setAnalyzerNodeIdAttr(config_space::TOPAS + "-" + topasID);
         for (unsigned i = 0; i != commObjs.size(); ++i) {
 		std::string managerID = (*xmlBlasters[i].getElement()).getProperty().getProperty(config_space::MANAGER_ID);
                 if (managerID == "") {
@@ -165,9 +168,9 @@ void Manager::sigChild(int sig)
 
         if (WIFEXITED(status)) {
                 if (WEXITSTATUS(status) == 0) {
-                        msg(MSG_ERROR, "Manager: Detection module with pid %i"
-			    "terminated with exist state 0. Not restarting module", pid);
-			runningModules.setState(pid, DetectMod::NotRunning);
+                        msg(MSG_ERROR, "Manager: Detection module with pid %i "
+			    "terminated with exit state 0. Not restarting module", pid);
+			runningModules.setState(pid, DetectMod::Remove);
 			return;
                 }else {
                         msg(MSG_ERROR, "Manager: Detection module with pid %i "
@@ -215,7 +218,8 @@ void* Manager::run(void* data)
 					delete confObj;
 				} catch (const exceptions::XMLException &e) {
 					msg(MSG_ERROR, e.what());
-					man->sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
+					man->sendControlMessage("<result oid='" + config_space::TOPAS + "-" + man->topasID + "'>Manager: " + 
+								std::string(e.what()) + "</result>");
 				}
 			}
                 }
@@ -264,14 +268,17 @@ void Manager::update(XMLConfObj* xmlObj)
 				availableModules[filename][0] = config_file;
 				runningModules.createModule(filename, availableModules[filename]);
 				runningModules.startModules(exporter);
-				sendControlMessage("<result>Manager: module \"" + filename + "\" started</result>");
+				sendControlMessage("<result oid=\"" + config_space::TOPAS + "-" + topasID + "\">Manager: module \"" + 
+						   filename + "\" started</result>");
 			} else {
 				msg(MSG_ERROR, ("Manager: module \"" + filename + "\" is not available").c_str());
-				sendControlMessage("<result>Manager: module \"" + filename + "\" is not available</result>");
+				sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "\">Manager: module '" + 
+						   filename + "\" is not available</result>");
 			}
 		} catch (const exceptions::XMLException &e) {
 			msg(MSG_ERROR, e.what());
-			sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
+			sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>Manager: " + std::string(e.what()) + 
+					   "</result>");
 		}
 	/* get module configuration file */
 	} else if (xmlObj->nodeExists(config_space::GET_MODULE_CONFIG)) {
@@ -285,23 +292,27 @@ void Manager::update(XMLConfObj* xmlObj)
 				inputStream.open(config_file.c_str(), std::ios::in);
 				if (!inputStream) {
 					msg(MSG_ERROR, ("Manager: Can't open \"" + config_file + "\"").c_str());
-					sendControlMessage("<result>Manager: Can't open \"" + config_file + "\"</result>");
+					sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + 
+							   "'>Manager: Can't open \"" + config_file + "\"</result>");
 				} else {
 					std::string message;
 					std::string line;
 					while (std::getline(inputStream, line)) {
 						message += line + "\n";
 					}
-					sendControlMessage("<result>\n" + message + "\n</result>");
+					sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>\n" + message + 
+							   "\n</result>");
 					inputStream.close();
 				}
 			} else {
 				msg(MSG_ERROR, ("Manager: module \"" + filename + "\" is not available").c_str());
-				sendControlMessage("<result>Manager: module \"" + filename + "\" is not available</result>");
+				sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>Manager: module \"" + 
+						   filename + "\" is not available</result>");
 			}
 		} catch (const exceptions::XMLException &e) {
 			msg(MSG_ERROR, e.what());
-			sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
+			sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>Manager: " + std::string(e.what()) + 
+					   "</result>");
 		}
 	/* update module configuration file */
 	} else if (xmlObj->nodeExists(config_space::UPDATE_MODULE_CONFIG)) {
@@ -314,22 +325,25 @@ void Manager::update(XMLConfObj* xmlObj)
 				outputStream.open(config_file.c_str(), std::ios::trunc);
 				if (!outputStream) {
 					msg(MSG_ERROR, ("Manager: Can't open \"" + config_file + "\"").c_str());
-					sendControlMessage("<result>Manager: Can't open \"" + config_file + "\" for writing</result>");
+					sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>Manager: Can't open \"" + 
+							   config_file + "\" for writing</result>");
 				} else {
 					xmlObj->enterNode(config_space::UPDATE_MODULE_CONFIG);
 					xmlObj->enterNode(config_space::CONFIGURATION);
 					std::string message = xmlObj->toString();
 					outputStream.write(message.c_str(), message.size());
-					sendControlMessage("<result>Update succesful</result>");
+					sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>Update succesful</result>");
 					outputStream.close();
 				}
 			} else {
 				msg(MSG_ERROR, ("Manager: module \"" + filename + "\" is not available").c_str());
-				sendControlMessage("<result>Manager: module \"" + filename + "\" is not available</result>");
+				sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>Manager: module \"" + filename + 
+						   "\" is not available</result>");
 			}
 		} catch (const exceptions::XMLException &e) {
 			msg(MSG_ERROR, e.what());
-			sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
+			sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>Manager: " + std::string(e.what()) + 
+					   "</result>");
 		}
         }
 	/* get available modules */
@@ -338,12 +352,12 @@ void Manager::update(XMLConfObj* xmlObj)
 		std::string message = "";
 		for (iter = availableModules.begin(); iter != availableModules.end(); iter++) {
 			message += "<module " + config_space::MODULE_FILENAME + "=\"" + iter->first + "\" " 
-				+ config_space::CONFIG_FILE + "=\"" + iter->second[0] + "\"/>";
+				+ config_space::CONFIG_FILE + "=\"" + iter->second[0] + "\"/>\n";
 		}
 		if (message != "") {
-			sendControlMessage("<result>\n" + message + "\n</result>");
+			sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>\n" + message + "</result>");
 		} else {
-			sendControlMessage("<result>No modules available</result>");
+			sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>No modules available</result>");
 		}
         }
 	/* get running modules */
@@ -357,17 +371,19 @@ void Manager::update(XMLConfObj* xmlObj)
 					std::string fileName = std::string(modules[i].begin(), modules[i].begin() + seperatorPos);
 					std::string configFile  = std::string(modules[i].begin() + seperatorPos + 1, modules[i].end());
 					message += "<module " + config_space::MODULE_FILENAME + "=\"" + fileName + "\" " 
-						+ config_space::CONFIG_FILE + "=\"" + configFile + "\"/>";
+						+ config_space::CONFIG_FILE + "=\"" + configFile + "\"/>\n";
 				}
 			}
 			if (message != "") {
-				sendControlMessage("<result>\n" + message + "\n</result>");
+				sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>\n" + message + "</result>");
 			} else {
-				sendControlMessage("<result>No running modules available</result>");
+				sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + 
+						   "'>No running modules available</result>");
 			}
 		} catch (const exceptions::XMLException &e) {
 			msg(MSG_ERROR, e.what());
-			sendControlMessage("<result>Manager: " + std::string(e.what()) + "</result>");
+			sendControlMessage("<result oid='" + config_space::TOPAS + "-" + topasID + "'>Manager: " + std::string(e.what()) + 
+					   "</result>");
 		}
         }
 	/* add commands here */

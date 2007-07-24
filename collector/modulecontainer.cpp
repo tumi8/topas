@@ -77,8 +77,8 @@ void ModuleContainer::deleteModule(pid_t pid)
 void ModuleContainer::startModules(DetectModExporter* exporter) 
 {
         for (unsigned i = 0; i != detectionModules.size(); ++i) {
-		// do not start already running modules
-		if (detectionModules[i]->getState() == DetectMod::Running)
+		// do not start already running or stopped modules
+		if (detectionModules[i]->getState() != DetectMod::NotRunning)
 			continue;
                 msg(MSG_INFO, "Starting module number %d: %s", i+1, 
 		    detectionModules[i]->getFileName().c_str());
@@ -97,6 +97,7 @@ void ModuleContainer::createModule(const std::string& command, const std::vector
 {
 	DetectMod* mod = new DetectMod(command);
 	mod->setArgs(args);
+	mod->setState(DetectMod::NotRunning);
 	detectionModules.push_back(mod);
 }
 

@@ -27,8 +27,14 @@ namespace ConfigStrings
 	static const std::string DEFAULTWRAPPERPIPE = "/tmp/xmlWrapper_fifo";
 	static const std::string TOPIC = "topic";
 	static const std::string DEFAULTTOPIC = "snortmodule";
-	static const std::string ANALYZERID = "analyzerid=";
-	static const std::string MANUFACTURER = "manufacturer=";
+	static const std::string IDMEF_OPENING_TAG = "<IDMEF-Message";
+	static const std::string IDMEF_CLOSING_TAG = "</IDMEF-Message>";
+	static const std::string IDMEF_ANALYZER_OPENING_TAG = "<Analyzer";
+	static const std::string IDMEF_ANALYZER_CLOSING_TAG = "</Analyzer>";
+	static const std::string IDMEF_NODE_OPENING_TAG = "<Node";
+	static const std::string IDMEF_NODE_CLOSING_TAG = "</Node>";
+	static const std::string IDMEF_ANALYZERID = "analyzerid=";
+	static const std::string IDMEF_NODE_IDENT = "ident=";
 	static const std::string GET_SNORT_CONFIG = "getSnortConfig";
 	static const std::string UPDATE_SNORT_CONFIG = "updateSnortConfig";
 	static const std::string GET_SNORT_RULE_FILE = "getSnortRuleFile";

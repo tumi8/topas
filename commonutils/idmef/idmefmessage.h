@@ -92,6 +92,12 @@ public:
         void setAnalyzerAttr(const std::string& analyzerClass, const std::string& manufacturer,
                              const std::string& model, const std::string& version);
 
+	/**
+         * Set <Node> "ident" attribute.
+         * @param ident A unique identifier for the node.
+         */
+        void setAnalyzerNodeIdAttr(const std::string& ident);
+
         /**
          * Create <Source> node elements.
          * @param spoofed Optional. An indication of whether the source is, 
