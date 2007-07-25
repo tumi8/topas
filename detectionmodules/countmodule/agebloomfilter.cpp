@@ -85,7 +85,7 @@ uint16_t AgeBloomFilter::getLastTime(uint8_t* input, unsigned len, uint16_t time
 	    maxdiff = diff;
 	}	    
     }
-    return current;
+    return ret;
 }
 
 uint16_t AgeBloomFilter::getAndSetLastTime(uint8_t* input, unsigned len, uint16_t time)
@@ -102,7 +102,7 @@ uint16_t AgeBloomFilter::getAndSetLastTime(uint8_t* input, unsigned len, uint16_
 	    maxdiff = diff;
 	}	    
     }
-    return current;
+    return ret;
 }
 
 
