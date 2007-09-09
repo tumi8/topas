@@ -296,13 +296,55 @@ void pcapwriter::writepacket (PcapPacket* packet)
 	}
 
 	else {
-	   int size = packet->ippps_size;
-	   
-	   if ((size + written_ip_octets) >= ip_length) // a bad exporter might export ethernet padding as ip payload
+	    /* gerhard: this is something I tried, but it does not work
+	     * if you use snort, try option "-k none" to disable checksum verification
+	    if (calc_thcs) {
+		if((packet->HDR_IP.protocol == 17) && (packet->ippps_size >= sizeof(packet->HDR_UDP))) {
+		    // cast ippps to UDP header
+		    PcapPacket::hdr_udp_t* udp = (PcapPacket::hdr_udp_t*) (packet->ippps_p);
+
+		    // initialize pseudo header for checksum calculation
+		    pseudoh.src_addr    = packet->HDR_IP.src_addr;
+		    pseudoh.dest_addr   = packet->HDR_IP.dest_addr;
+		    pseudoh.zero        = 0;
+		    pseudoh.protocol    = packet->HDR_IP.protocol;
+		    pseudoh.length      = udp->length;
+
+		    packet->HDR_UDP.checksum = 0;
+		    u = ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
+			ntohs(in_checksum(packet->ippps_p, packet->ippps_size));
+			//  + ntohs(in_checksum(packet_buf, curr_offset));
+		    udp->checksum = htons((u & 0xffff) + (u>>16));
+		    if (udp->checksum == 0) // differenciate between 'none' and 0
+			udp->checksum = htons(1);
+		} else if((packet->HDR_IP.protocol == 6) && (packet->ippps_size >= sizeof(packet->HDR_TCP))) {
+		    // cast ippps to TCP header
+		    PcapPacket::hdr_tcp_t* tcp = (PcapPacket::hdr_tcp_t*) (packet->ippps_p);
+
+		    // initialize pseudo header for checksum calculation
+		    pseudoh.src_addr    = packet->HDR_IP.src_addr;
+		    pseudoh.dest_addr   = packet->HDR_IP.dest_addr;
+		    pseudoh.zero        = 0;
+		    pseudoh.protocol    = packet->HDR_IP.protocol;
+		    pseudoh.length      = htons(ip_length - written_ip_octets);
+
+		    tcp->checksum = 0;
+		    u = ntohs(in_checksum(&pseudoh, sizeof(pseudoh))) + 
+			ntohs(in_checksum(packet->ippps_p, packet->ippps_size));
+			// ntohs(in_checksum(packet_buf, curr_offset));
+		    tcp->checksum = htons((u & 0xffff) + (u>>16));
+		    if (tcp->checksum == 0) // differenciate between 'none' and 0
+			tcp->checksum = htons(1);
+		} */
+	    }
+
+	    int size = packet->ippps_size;
+
+	    if ((size + written_ip_octets) >= ip_length) // a bad exporter might export ethernet padding as ip payload
 		size = ip_length  - written_ip_octets;
-	   
-	   fwrite(packet->ippps_p,size, 1, output_file);
-	   written_ip_octets += size;
+
+	    fwrite(packet->ippps_p,size, 1, output_file);
+	    written_ip_octets += size;
 	}
     }
     else {
