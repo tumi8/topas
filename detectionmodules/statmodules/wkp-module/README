@@ -1,5 +1,7 @@
                    Wilcoxon-Mann-Whitney, Kolmogorov-Smirnov
                               & Pearson chi-square
+                                      +
+                                    Cusum
                                 detection module
                    =========================================
 
@@ -10,7 +12,8 @@ To use this module, you have to:
 1) enable it in the IPFIX collector's XML configuration file, through
    <module>
      <filename>path/to/wkp-module</filename>
-     <arg>path/to/wkp-module-xml-configuration-file</arg>
+     <run>yes</run>
+     <configFile>path/to/wkp-module-xml-configuration-file</configFile>
    </module>
 
 2) provide some configuration information in the module's XML
@@ -23,26 +26,51 @@ Table of contents
 =================
 
 I   - Configuration
-II  - How does it work?
-III - Known bugs and limitations
+II  - Offline mode
+III - How does it work?
+IV  - Known bugs and limitations
 
 
 
 I - Configuration
 =================
 
-The module's XML configuration file must provide the following two sections:
+The module's XML configuration file must provide the following three sections:
 - <preferences>: user's preferences about the module
-- <test-params>: statistical tests parameters
+- <cusum_parameters>: parameters for the cusum test
+- <wkp_parameters>: parameters for the statistical wkp-tests
 
+
+-------------
 <preferences>
 -------------
 
-<output_file>:
+<logfile>:
 
-path to the module output file. If not given, or if troubles opening
-it occur (e.g. problems with rights), the module will issue a warning
-message and exit.
+path to the module logfile. If not given, wkp_log.txt will be
+used as default. If troubles opening it occur (e.g. problems with rights),
+the module will issue an error message and exit.
+
+
+<logfile_output_verbosity>:
+
+O: no output generated
+1: only p-values and attacks are recorded
+2: plus some cosmetics
+3: plus learning phases, updates and empty records events
+4: plus sample printing
+5: plus all details from statistical tests
+If not given, a warning message is issued and default 3 is used; if
+something less than 0 or greater than 5 is given, an error message is
+issued and the module exits.
+!!! WARNING: With many tests enabled and a high value for this parameter, the logfile quickly
+reaches sizes up to several hundreds of MB!
+
+<accepted_source_ids>:
+
+comma-seperated list of source ids (of the exporting processes) to be
+accepted. "all" is also possible. If parameter is omitted or left blank, all source ids will be accepted, too.
+
 
 <alarm_time>:
 
@@ -50,40 +78,115 @@ time (in sec.) between two "test-runs". A "test-run" is defined as the
 time when the module gathers information from the data-store, updates
 its own samples information, and -- possibly, but not systematically
 (see <stat_test_frequency>) -- runs Wilcoxon and/or Kolmogorov and/or
-Pearson chi-square statistical tests. If no alam time is given, a
-warning message is issued and the module exits.
+Pearson chi-square and(or cusum statistical tests. If no alarm time is given, a
+warning message is issued and the DEFAULT_alarm_time will be used.
+!!! NOTE: In OFFLINE MODE, this parameter will be ignored and 0 used instead.
+
 
 <warning_verbosity>:
 
-O: warnings are sent to stderr
-1: warnings are sent to stderr and output file
-If not given, a warning message is issued and default 0 is used; if
-something else as 0 or 1 is given, a warning message is issued and the
+This parameter defines, which messages will be printed out by the wkp-/cusum-module.
+Values can be 0, 1, 2, 3, 4 or 5, with the following meaning:
+O: No messages are printed out
+1: Fatal Errors
+2: Same as 1 + normal Errors
+3: Same as 2 + Warnings
+4: Same as 3 + Informations
+5: Same as 4 + Debug
+If not given, a warning message is issued and default 3 is used; if
+something else as 0,1,2,3,4 or 5 is given, an error message is issued and the
 module exits.
 
-<output_verbosity>:
 
-O: no output generated
-1: only p-values and attacks are recorded
-2: same as 1, plus some cosmetics
-3: same as 2, plus learning phases, updates and empty records events
-4: same as 3, plus sample printing
-5: same as 4, plus all details from statistical tests
-If not given, a warning message is issued and default 3 is used; if
-something less than 0 or greater than 5 is given, a warning message is
-issued and the module exits.
+<endpoint_key>: // FOR AGGREGATION
 
-<monitored_value>:
+The user can choose between <address />, <port />, <protocol />, and any combination of them. This value will form the key of the EndPoints, i. e. that all EndPoints sharing this same key are considered as one EndPoint.
+E. g. if you are only interested in ports and protocols, IP addresses will be ignored and an EndPoint will look like "0.0.0.0:port|protocol". This enables the user to investigate port/protocol/address-combination anomalies. If omitted, "none" will be used as default endpoint key, i. e. that there will be only one endpoint, 0.0.0.0:0|0, and a warning message is printed.
 
-The user should choose which value (s)he prefers to monitor: packets,
-octets, octets/packet, packets_out-packets_in, octets_out-octets_in,
-packets(t)-packets(t-1) and octets(t)-octets(t-1) are supported. The
-input is not case-sensitive, and "bytes" and "octets" are synonymous.
-If nothing or something else is given, the module exits after a
-warning message. Please note that the module does in fact NOT handle
-octets/packet, but rather 1000*octets/packet, the result being an
-integer: this trick enables to "simulate" a float division and
-increase precision, without re-writing loads of existing code.
+
+<netmask>: // FOR AGGREGATION
+
+This parameter strongly relates to the endpoint_key parameter. With this netmask, a value between 0 and 32, every IP address will be masked before further investigation. This allows you to aggregate IP addresses to subnets. If omitted, 32 will be used, meaning that every IP address will be considered as it is. Please note, that this netmask is a global one for aggregating purposes and has nothing to do with the netmasks provided in the endpoints_to_monitor file! They are for filtering purposes!
+
+
+<endpoints_to_monitor>: // FOR FILTERING
+
+The user can specify a file containing all the endpoints he wants to be considered for the online tests, one endpoint per line. The format of the endpoints has to be:
+ip.ip.ip.ip/netmask:port|protocol
+For example, if we want to monitor the IP address 172.83.44.3 at port 80 and protocol 6 (= TCP), we have to write 172.83.44.3/32:80|6 in one line of the file. In this case, netmask is 32, i. e. no subnet will be considered, but the IP address itself.
+With the use of wildcards for ports or protocols, the user can tell the module, that he isnt interested in these two. Wildcards are -1 for both of them. The Wildcard for IP addresses is the value 0 for the netmask. So, 172.83.44.3/32:-1|-1 means, that we are interested in IP address 172.83.44.3 in general, no matter which port or protocol is used. Every endpoint, containing 172.83.44.3 as IP address will thus be tested. 172.83.44.3/0:80|-1 would mean, that you are only interested in endpoints containing port 80, no matter which IP address or protocol they use.
+"all" can also be used as value for this parameter, meaning that all endpoints will be considered. This is the default value for this parameter, if it is omitted.
+Please note, that this parameter is for filtering endpoints, not for aggregating them! To aggregate endpoints, use the endpoint_key and netmask parameters! Furthermore, filtering is applied after aggregation. So make sure to provide endpoints which correspond to your selected endpoint_key and netmask! 
+Bad example: You choose "port" as endpoint_key and define 172.83.44.3/32:80|6 as one of the endpoints you are interested in. This endpoint never occurs because all endpoints look like 0.0.0.0:port|0. 
+Good Example: You choose "port" as endpoint_key and define 0.0.0.0/32:80|0 as one of the endpoints you are interested in. You could also choose 172.83.44.3/0:80|-1. 
+If you defined a global netmask via the netmask parameter, you should also be careful with your filters. 
+Bad example: You choose 16 as the global netmask and add a filter like 172.83.44.3/32:80|6 --> the last 16 bits of every IP address will be set to 0 by the global netmask, so your filter never matches. 
+Good example: Choose 172.83.44.3/16:80|6 or 172.83.0.0/32:80|6 instead.
+!!! NOTE: In ONLINE MODE, this parameter will always be used. In OFFLINE MODE, the x_frequently_endpoints parameter will be checked first and if defined, used instead !!!
+
+
+<x_frequent_endpoints>: // FOR FILTERING
+
+This parameter sets the number of endpoints to be considered for the offline tests. The endpoints are sorted by number of occurances in all the test intervals. That means, if you choose 10 as value for this parameter, tests will be performed only for the 10 most frequently appearing endpoints of your data. This parameter was mainly introduced to reduce the number of output files generated by the tests and thus to keep track of the results. But it is also very useful to be able to test only the most frequently appearing endpoints rather than user defned endpoints. If omitted, DEFAULT_x_frequent_endpoints will be used.
+!!! NOTE: This parameter is only usable in OFFLINE MODE. If defined, it will be used instead of the endpoints_to_monitor parameter !!!
+
+
+<endpointlist_maxsize>:
+
+This parameter defines the number of maximal observable endpoints. If this
+size is reached, every further endpoint will be ignored. This is to avoid
+storage exhaustion, if you run the module for a longer time and without filters. 
+The "bigger" the endpoint_key, the more endpoints will be monitored, so if you e. g. use the
+combination of IP/port/protocol as endpoint_key, you should think about increasing the maxsize of the endpointlist. 
+If nothing is given, default value will be used (DEFAULT_endpointlist_maxsize).
+
+
+<metrics>:
+
+The user should choose which metrics (s)he prefers to monitor and add each of them
+per <value></value>-Tag. The possible values are:
+
+<bytes_in />
+<bytes_out />
+<packets_in />
+<packets_out />
+<records_in />
+<records_out />
+<bytes_per_packet_in />
+<bytes_per_packet_out />
+<bytes_per_record_in />
+<bytes_per_record_out />
+<packets_per_record_in />
+<packets_per_record_out />
+<bytes_out-bytes_in />
+<bytes_in-bytes_out />
+<packets_out-packets_in />
+<packets_in-packets_out />
+<records_out-records_in />
+<records_in-records_out />
+
+Example configuration:
+
+  <metrics>
+    <packets_out />
+    <bytes_per_packet_in />
+  </metrics>
+
+If nothing or something else is given, the module exits after an
+error message. Three attributes can be specified with every metric:
+qd_factor: quase-differenciates the value of the previous time interval from the current one (x(t)-qd_factor*x(t-)).
+This allows to do an autoregressive modelling.
+negate: multiplies the metric by -1
+absolute: takes the absolute value
+For negate and absolute, the attribute value must be unequal to "false".
+
+Example:
+
+  <metrics>
+    <packets_out qd_factor="0.5" />
+    <bytes_per_packet_in absolute="true" />
+  </metrics>
+
 
 <noise_threshold_packets>, <noise_threshold_bytes>:
 
@@ -93,69 +196,43 @@ have insignificant or irregular network traffic activity, sending only
 a dozen or so packets from time to time, like "residual" traffic, "noise",
 that should be cut off to avoid monitoring irregular and insignificant
 network traffic. This helps reducing the number of "false positive" alarms.
-Noise reduction is active only if monitored_value is packets or bytes; these
-parameters will be ignored if monitored_value is something else.
-If no noise reduction prefererences are provided and if monitored_value is
-packets or bytes, a warning message is issued and default values 0 are used
-(no noise reduction).
+Noise reduction is active only if considered metric contains packets or bytes; these
+parameters will be ignored if metric is something else.
 
-<protocols>:
 
-protocols to monitor; packets of other protocols will be ignored.
-Possible choices are ICMP, TCP, UDP, RAW, or their identifiers 1, 6,
-17, 255; they must be written as a space-separated list. Input is not
-case-sensitive. If some other protocol is provided, the module will
-exit with an usage message. Default is monitoring all of them (after
-some warning message).
+<use_pca>:
 
-<netmask>:
+If this parameter is set to "true", the tests will be performed on the principal components of the metrics instead of the metrics itself. If the parameter is omitted or contains any other value than "true", pca wont be performed.
 
-subnet mask to apply to every IP address. When the file containing IP
-addresses to monitor is read (see <ip_addresses_to_monitor>), its
-addresses are immediately masked, and when an IP address is reported
-to the collector by the monitor, it is at once masked, and then
-compared with the masked addresses gotten from the file. This mask can
-be provided as a dotted address (255.255.255.0), as an hexadecimal
-number (0xFFFFFF00, don't forget the 0x) or as an integer shortcut
-(24). If something else is provided, the module exits after issuing an
-error message; if nothing is given, default value 32 is assumed.
 
-<ports>:
+<pca_learning_phase>:
 
-ports to monitor; packets to or from other ports will be ignored. They
-must be written as a space-separated list. If not given, default
-behavior is to pay no attention to ports and monitor everything (a
-warning message will be issued).
+If pca shall be performed (that means, use_pca parameter is set to "true), this parameter defines the length of the learning phase, i. e. how many values shall be considered for the calculation of the covariance matrix and its eigenvectors, the components. If omitted, DEFAULT_learning_phase_for_pca will be used.
 
-<ip_addresses_to_monitor>:
 
-path to a file containing IP addresses (one per line). It acts as a
-filter: only the given IPs will be monitored by the module, in both
-"in" and "out" directions; the others will be ignored. It can contain
-hosts and/or networks addresses; keep in mind that they will all be
-masked by the same subnet mask (see <netmask>). If a problem occurs
-opening this file, the module will exit after a warning message. If no
-file is given, a warning message will be issued stating that it is
-assumed the user wants the module to monitor every IP address found on
-the monitored device (see <iplist_maxsize>). Please note that the IP
-addresses reported to the collector by the monitor will also be
-masked.
+<use_correlation_matrix>:
 
-<iplist_maxsize>:
+This parameter allows you to choose between the covariance matrix and their standardized form, the correlation matrix, used for calculation of the principal components. If set to "true", the correlation matrix will be used, if set to false or omitted, the covariance matrix will be used.
 
-In case the user wants every IP address to be monitored, a limit to
-the number of these IP addresses must be provided to prevent memory
-exhaustion through too many monitored IP addresses. If not given, then
-default 421 will be used after a warning message. If the user gives
-both <ip_addresses_to_monitor> and <iplist_maxsize>, only the former
-will be taken into account.
+
+<offline_file>:
+
+This parameter defines the file, to which data shall be written in ONLINE MODE or from which data is read in OFFLINE MODE. You HAVE TO provide a file, if you are about to run the module in OFFLINE MODE (thats the basic idea of the offline mode ...). The module will exit and remind you to do so, if you didnt. 
+
+
+<output_dir>:
+
+If you define this parameter, output files will be generated for the tests of this module. They will be stored in the directory you specify as value for this parameter. If this parameter is omitted, no output files will be generated. If the directory already exists, no output will be generated and a warning message is printed. There are two kinds of output files: those files which hold all the values of the metrics (pca_components) of each endpoint and those files which contain all the parameters of the tests for every metric (pca_component) and every endpoint. Now, you should understand our intention to introduce the filter and x_frequently_endpoints parameters ;)
+
 
 <stat_test_frequency>:
 
 This parameter tells the module to perform a statistical test every X
 "test-runs" (see <alarm_time>), i.e. every
 <stat_test_frequency>*<alarm_time> seconds. If not provided, a warning
-message will be issued, and default X=1 will be used.
+message will be issued, and default value will be used
+(X = DEFAULT_stat_test_frequency).
+
 
 <report_only_first_attack>:
 
@@ -163,46 +240,98 @@ If set to true, the module will only display the first "ATTACK!" message
 in a series of several results hinting at an attack. This helps keep the
 log file more readable. Moreover, as an attack usually covers many
 Stat::test()-runs, only the first alarm message is relevant.
-This parameter is a case-insensitive boolean that will be set to true
-if no value is provided (after an information message).
+
 
 <pause_update_when_attack>:
 
-If set to true, it "pauses" the update function when an attack occurs,
-i.e. it updates only the "new" sample, so that the anomaly is not
+For the WKP-Tests, this parameter is for "pausing" the update function when one ore more attacks occurs, i.e. it updates only the "new" sample, so that the anomaly is not
 assumed to be normal traffic when the corresponding sample values are sent
 into the "old" sample. This avoids detecting another anomaly when the
 current anomaly ceases and traffic returns to normal values.
-This parameter is a case-insensitive boolean that will be set to true
-if no value is provided (after an information message).
+This parameter can have values 0, 1 or 2 and is set to 0 (after a warning
+message) if omitted.
+0 - no pausing at all
+1 - pause, if (at least) one of the wkp-tests detects an attack
+2 - pause, if all three tests detect an attack
+3 - same as 0
+For the cusum-test, the values are related to the metrics. That means, updates for alpha will only be paused, if
+1 - at least one metric yielded an alarm
+2 - all metrics yielded an alarm
+3 - pause update for every metric individually.
 
-<test-params>
--------------
 
-<wilcoxon_test>, <kolmogorov_test>, <pearson_chi-square_test>:
+
+-------------------
+<cusum_parameters>
+-------------------
+
+<cusum_test>:
+
+This parameter tells the module whether the cusum-test shall be performed or not.
+Possible values: true (perform it) or false (dont perform it). If not set, true
+assumed.
+
+
+<amplitude_percentage>:
+
+This parameter defines the expected increase after a change point (or attack) as a multiple of the estimated standard deviation. As soon as the test-statistic g does make this jump, an alarm will be raised (note: with the repetition_factor, you can define a number of intervals the increase has to persist until an alarm is thrown). More precisely, the threshold for the metric values is mean+amplitude_percentage*sigma, while the threshold for the test-statistic g_n=max[0, (g_(n-1) + (x-mean-amplitued_percentage*sigma/2))] is N=repetition_factor*amplitude_percentage*sigma/2. The role of the repetition_factor is explained below, mean and sigma are the EWMA estimated mean and standard deviation before the change point. Possible values are floating point values and if omitted, DEFAULT_amplitude_percentage will be used as default value.
+
+
+<repetition_factor>:
+
+This parameter defines, how many times the test-statistic g must stay above the threshold until an alarm is raised. "how many times" refers to the number of consecutive time intervals and the jump of g with respect to the expected increase. Thus, this parameter is somehow related to the amplitude_percentage. But whilst the amplitude_percentage represents the "sensitivity" of the increase of the test-statistic g (that means, how large the values of X must be to make g positive), this parameter helps you in controlling your false alarm rate by making the test less sensitive to outliers and by this means more robust. It expects integer values and may not be 0 or negative. A good choice would be 2 or 3. If omitted, DEFAULT_repetition_factor will be used as default;
+
+
+<cusum_learning_phase>:
+
+This parameter expects an positive integer value which indicates the number of samples to be collected for each endpoint, before the initial mean value and sigma (standard deviation) value are calculated. Only after, the cusum-test can start for that endpoint. The higher the value for this parameter, the better the estimated mean and sigma will be before starting the tests. If omitted, DEFAULT_learning_phase_for_alpha will be assumed. This value may not be negative or zero!
+
+
+<smoothing_constant>:
+
+This parameter expects floating point values greater than zero and represents the smoothing constant for the exponentially weighted moving average function used to smooth the mean and sigma values. The mean will be continuously updated via
+mean(n) = mean(n-1) * (1 - smoothing_constant) + X(n) * smoothing_constant
+That means: the greater the value of the smoothing constant, the more weight will be given to the last value of the metric and the less weight will be given to the last mean value. It is wise to use small values for the smoothing constant so that the last observed value has only little impact on the new mean. The update of the sigma (standard deviation) value is described below. If omitted, DEFAULT_smoothing_constant will be used as default value for.
+
+
+<log_variance_ewma>:
+
+If this parameters is given and the value is not "false", the logarithmic variance (sigma^2) is used in the EWMA update function:
+(sigma^2)(n) = exp[log(sigma^2)(n-1) * (1-smoothing_constant) + log((X(n)-mean)^2) * smoothing_constant]
+If this parameter is not present or its value is "false", the update is as follows:
+(sigma^2)(n) = (sigma^2)(n-1) * (1-smoothing_constant) + (X(n)-mean)^2) * smoothing_constant
+The logarithmic update is said to be better as it gives less weight to large (X(n)-mean)^2 occuring in a single interval.
+
+
+
+-----------------
+<wkp_parameters>
+-----------------
+
+<wmw_test>, <ks_test>, <pcs_test>:
 
 These parameters tell the module which statistical tests to
-perform. They are case-insensitive booleans that will all be assumed
-to true (after some warning messages) if not given.
+perform. 
 
-<sample_old_size>, <sample_new_size>:
 
-These parameters are the length of the two sample vectors used by the
+<old_sample_size>, <new_sample_size>:
+
+These parameters define the length of the two sample vectors used by the
 statistical tests. The former is the "profile", the "past" of the
 monitored network, to which the later, the "present" of the network,
-is compared. If not provided, default values 111 (for the "old"
-sample) and 11 (for the "new" sample) are used.
+is compared. If not provided, default values are used
+(DEFAULT_sample_old_size und DEFAULT_sample_new_size).
 
-<two_sided>:
 
-This case-insensitive boolean tells if Wilcoxon-Mann-Whitney statistical
-test should be performed assuming the alternative hypothesis is
-one-sided or two-sided. Default is false, and will be assumed
-after some warning message, if the user doesn't provide it.
-This parameter is active only if Wilcoxon-Mann-Whitney test is enabled;
-Kolmogorov-Smirnov and Pearson chi-square tests are one-sided only
-(see the comments in their source files, and the STATS file if you need
-to revive some memories about one-sided and two-sided tests).
+<wmw_one_sided>:
+
+If this parameter is given and its value is not "false", Wilcoxon-Mann-Whitney 
+statistical test is performed assuming the one-sided alternative hypothesis, i.e.
+only a shift to greater metric values is detected as a change point. Otherwise,
+the alternative hypothesis considers shifts to smaller or greater values (two-sided).
+Note that Kolmogorov-Smirnov and Pearson chi-square tests always test against the
+two-sided alternative hypothesis.
+
 
 <significance_level>:
 
@@ -210,13 +339,86 @@ If this parameter is provided, the module will display an "ATTACK!"
 message everytime the statistical tests yield a p-value hinting at the
 possibility of an attack, to significance level <significance_level>.
 Usually, we use 0.05. If a value smaller than 0 or greater than 1 is
-given, the module will display a warning message and exit. If no value
+given, the module will display an error message and exit. If no value
 is given, the module will not display any warning message, nor any
 "ATTACK!" message.
 
 
 
-II - How does it work?
+II - Offline mode
+=================
+
+The offline_file parameter allows to store the collected endpoint metrics in
+a file for later offline analysis. In order to use the module as stand-alone
+executable (without the TOPAS collector), it has to be recompiled setting
+the OFFLINE_MODE option (#define). You can change the compile settings in a 
+comfortable way by executing
+
+module-home$ make edit_cache
+
+in the module's directory and toggle the OFFLINE option to ON.
+Hit "c" and then "q" to reconfigure and save the changes. Now, call
+
+module-home$ make
+
+to recompile the module. The module will now use another InputPolicy, called
+OfflineInputPolicy, which enables the Stat class to read the data from a file
+and is now indepedent from the alarm_time parameter, meaning that the tests
+are performed as quick as your machine can run the process rather than waiting
+the alarm_time seconds. Datasets with a length of hours can be tested in just a
+few seconds/minutes. Another advantage of the OfflineInputPolicy is that the
+module can now directly be started without the collector. Do so by typing
+
+module-home$ ./wkp-module wkp-module-offline.xml
+
+As you can see, you need to specify the configuration file, as the module can
+no longer get the path to the file from the collector's preferences. So be sure
+that you put the file in the module's directory. Make sure that there is an
+offline file from a previous ONLINE-MODE-Run of the module. Use the offline_file 
+parameter to specify the filename.
+
+In OFFLINE MODE, there are two ways of filtering endpoints to be monitored from
+the rest of the data: Either you define a file with these endpoints inside and use
+the endpoints_to_monitor parameter to specify that file, or you can use the
+x_frequently_endpoints parameter to tell the module to determine the x most
+frequently appearing endpoints of the data. Feel free to use neither of the both
+and have the tests run on all the endpoints out there (in the dataset).
+
+If you want all the metric-values and different test-parameters to be printed into
+some output files, use the output_dir parameter. If you specify a directory name with 
+this parameter, the module will save these files in there (if possible). So you can have
+a look on the values and parameters later or you can use these files to visualize some
+of the data. By the way, these output files can also be generated in ONLINE MODE.
+
+Here is a summary of the parameters with special or different meaning in ONLINE MODE
+and OFFLINE MODE:
+
+parameter                         ONLINE                     OFFLINE
+---------------------------------------------------------------------------
+<alarm_time>                 used as defined             ignored and set to 0
+<offline_file>               used as defined             obligatory!
+<x_frequent_endpoints>       ignored                     used as defined,
+                                                         endpoints_to_monitor is ignored
+<endpoints_to_monitor>       used as defined             used as defined, if x_frequent_endpoints 
+                                                         is not defined
+
+All other parameters are the same for ONLINE and OFFLINE MODE.
+
+Special attention needs also to be paid to the Aggregation/Filtering capacities of the
+module in both, ONLINE and OFFLINE MODE. Be sure that you define filters that correspond
+to the (aggregated) form of the endpoints! See information for endpoints_to_monitor
+parameter in section I.
+
+Please remember: The module's configuration file and the offline file have to be in
+the module's directory instead of the working_dir!
+
+If you have tested enough and want to run the module in ONLINE MODE now or again,
+redo the above steps but set the OFFLINE MODE option to OFF again.
+
+
+
+
+III - How does it work? (horribly obsolete!!!)
 ======================
 
 Wilcoxon-Mann-Whitney, Kolmogorov-Smirnov and Pearson chi-square tests
@@ -241,16 +443,16 @@ stat-store.h/cpp:
 
 Defines and implements the data storage class, StatStore. Information
 received from the monitor is stored into this storage class into a
-C++ "map" container whose key field is an IP address and value field
-is a structure containing the numbers of packets and bytes in both
+C++ "map" container whose key field is an EndPoint and value field
+is a structure containing the numbers of packets, bytes and records in both
 "IN" and "OUT" directions (a map is a kind of table whose keys are
 always sorted):
 
-+-----+     +--------------+--------------+------------+------------+
-| IP1 |-----| #packets <-- | #packets --> | #bytes <-- | #bytes --> |
-+-----+     +--------------+--------------+------------+------------+
-| IP2 |-----| #packets <-- | #packets --> | #bytes <-- | #bytes --> |
-+-----+     +--------------+--------------+------------+------------+
++-----+     +--------------+--------------+------------+------------+--------------+--------------+
+| EP1 |-----| #packets <-- | #packets --> | #bytes <-- | #bytes --> | #records <-- | #records --> |
++-----+     +--------------+--------------+------------+------------+--------------+--------------+
+| EP2 |-----| #packets <-- | #packets --> | #bytes <-- | #bytes --> | #records <-- | #records --> |
++-----+     +--------------+--------------+------------+------------+--------------+--------------+
   ...             ...            ...           ...          ...
 
 This map container is destroyed with the StatStore object when a
@@ -413,23 +615,23 @@ Pearson chi-square statistical test.
 shared.h/cpp:
 -------------
 
-A print operator (<<) for lists and vectors; used by all statistical
-tests.
+The EndPoint and FilterEndPoint classes and all their methods. the Info struct
+and some output operators.
 
 
 
-III - Known bugs and limitations
+IV - Known bugs and limitations
 ================================
 
 Two limitations:
 
-- no mechanism of size limitation is provided for the output file (log file),
+- no mechanism of size limitation is provided for the output file (logfile),
   and its size keeps growing ever and ever (fast if output verbosity is set
   to some high value) --> don't run the module for weeks, or find and implement
-  some size limitation mechanism;
+  some size limitation mechanism.
 
-- the tests use /dev/null to send their output when output verbosity is not
-  the maximal output verbosity --> don't run the module on non-Unix machines,
+- the wkp-tests use /dev/null to send their output when logfile_output_verbosity is not
+  the maximal verbosity --> don't run the module on non-Unix machines,
   or find and code a way to emulate a trash bin.
 
 No known bug yet, but there are probably loads of them.
@@ -439,6 +641,9 @@ No known bug yet, but there are probably loads of them.
 --
 
 For any request, comment, bug report, wedding proposal, etc,
-feel free to email romain(.)michalec(at)ensta(.)org.
+feel free to email romain(.)michalec(at)ensta(.)org
 
 2006/09/28
+
+Updated by Sven Wiebusch in 2007
+Last updated by Gerhard Muenz on 2007/10/17

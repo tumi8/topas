@@ -1,5 +1,6 @@
 /**************************************************************************/
 /*    Copyright (C) 2007 Gerhard Muenz                                    */
+/*    University of Tuebingen, Germany                                    */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -19,15 +20,30 @@
 #include "msgstream.h"
 
 
+void MsgStream::setName(const std::string& newname)
+{
+    name = newname;
+}
 
 void MsgStream::setLevel(MsgLevel level)
 {
     outputLevel = level;
 }
 
-void MsgStream::setName(const std::string& newname)
+void MsgStream::setLogLevel(MsgLevel level)
 {
-    name = newname;
+    logLevel = level;
+}
+
+bool MsgStream::openLogfile(const std::string& filename) 
+{
+    logfile.open(filename.c_str());
+    return !logfile.fail();
+}
+
+void MsgStream::closeLogfile() 
+{
+    logfile.close();
 }
 
 void MsgStream::printIntro(MsgLevel level)
@@ -40,10 +56,10 @@ void MsgStream::printIntro(MsgLevel level)
 	    std::cout << "ERROR [" << name << "]: ";
 	    break;
 	case WARN:
-	    std::cout << "WARN  [" << name << "]: ";
+	    std::cout << "WARNING [" << name << "]: ";
 	    break;
 	case INFO:
-	    std::cout << "INFO  [" << name << "]: ";
+	    std::cout << "INFORMATION [" << name << "]: ";
 	    break;
 	case DEBUG:
 	    std::cout << "DEBUG [" << name << "]: ";
@@ -51,12 +67,50 @@ void MsgStream::printIntro(MsgLevel level)
     }
 }
 
+void MsgStream::logIntro(MsgLevel level)
+{
+    switch(level){
+	case FATAL:
+	    logfile << "FATAL [" << name << "]: ";
+	    break;
+	case ERROR:
+	    logfile << "ERROR [" << name << "]: ";
+	    break;
+	case WARN:
+	    logfile << "WARNING [" << name << "]: ";
+	    break;
+	case INFO:
+	    logfile << "INFORMATION [" << name << "]: ";
+	    break;
+	case DEBUG:
+	    logfile << "DEBUG [" << name << "]: ";
+	    break;
+    }
+}
+
 void MsgStream::print(MsgLevel level, const std::string& msg)
 {
-    if(level <= outputLevel)
-    {
-	printIntro(level);
-	std::cout << msg << std::endl;
-    }
+  if(level <= outputLevel)
+  {
+    printIntro(level);
+    std::cout << msg << std::endl;
+  }
+  if(level <= logLevel)
+  {
+    logIntro(level);
+    logfile << msg << std::endl;
+  }
+}
+
+void MsgStream::rawPrint(MsgLevel level, const std::string& msg)
+{
+  if(level <= outputLevel)
+  {
+    std::cout << msg << std::endl;
+  }
+  if(level <= logLevel)
+  {
+    logfile << msg << std::endl;
+  }
 }
 

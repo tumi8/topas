@@ -89,43 +89,42 @@ class DetectionBase
                 /* parse confiuration file to get all xmlBlasters and their properties */
                 if (confObj->nodeExists(config_space::XMLBLASTERS)) {
 			confObj->enterNode(config_space::XMLBLASTERS);
-			if (confObj->nodeExists(config_space::XMLBLASTER)) {
-				confObj->setNode(config_space::XMLBLASTER);
+			if (confObj->selectNodeIfExists(config_space::XMLBLASTER)) {
 				unsigned int count = 0;
-				while (confObj->nextNodeExists()) {
-					confObj->enterNextNode();
-				 	/* Property does handle properties in the java-way */
+				do {
+				    if(confObj->enterNodeIfNotEmpty()) {;
+					/* Property does handle properties in the java-way */
 					Property::MapType propMap;
 					std::vector<std::string> props;
 					/* get all properties */
-					if (confObj->nodeExists(config_space::XMLBLASTER_PROP)) {
-						props.push_back(confObj->getValue(config_space::XMLBLASTER_PROP));
-						while (confObj->nextNodeExists()) {
-							props.push_back(confObj->getNextValue());
-						}
+					if (config->selectNodeIfExists(config_space::XMLBLASTER_PROP)) {
+					    do {
+						props.push_back(config->getValue());
+					    } while (config->selectNextNodeIfExists(config_space::XMLBLASTER_PROP))
 					} else {
-						msgStr << MsgStream::WARN << "No <" << config_space::XMLBLASTER_PROP 
-							  << "> statement in config file, using default values"
-							  << MsgStream::endl;
+					    msgStr << MsgStream::WARN << "No <" << config_space::XMLBLASTER_PROP 
+						<< "> statement in config file, using default values"
+						<< MsgStream::endl;
 
 					}
 					for (unsigned i = 0; i != props.size(); ++i) {
-						unsigned seperatorPos;
-						if (std::string::npos != (seperatorPos = props[i].find(' '))) {
-							std::string key = std::string(props[i].begin(), props[i].begin() + seperatorPos);
-							std::string value  = std::string(props[i].begin() + seperatorPos + 1, props[i].end());
-							propMap[key] = value;
-						}
+					    unsigned seperatorPos;
+					    if (std::string::npos != (seperatorPos = props[i].find(' '))) {
+						std::string key = std::string(props[i].begin(), props[i].begin() + seperatorPos);
+						std::string value  = std::string(props[i].begin() + seperatorPos + 1, props[i].end());
+						propMap[key] = value;
+					    }
 					}
- 					/* global configuration for each xmlBlaster connection */
+					/* global configuration for each xmlBlaster connection */
 					std::string instanceName = "connection-" + ++count;
 					GlobalRef globalRef =  Global::getInstance().createInstance(instanceName, &propMap);
 					/* get module id here */
 					analyzerId = globalRef.getElement()->getInstanceId();
 					analyzerId = std::string(analyzerId.begin() + analyzerId.find_last_of("/") + 1, analyzerId.end());
 					xmlBlasters.push_back(globalRef);
- 					confObj->leaveNode();
-				}
+					confObj->leaveNode();
+				    }
+				} while (confObj->selectNextNodeIfExists(config_space::XMLBLASTER))
 			} else {
 				msgStr << MsgStream::WARN << "No <" << config_space::XMLBLASTER << "> statement in config file" << MsgStream::endl;
 			}

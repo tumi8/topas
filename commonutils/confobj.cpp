@@ -1,5 +1,6 @@
 /**************************************************************************/
 /*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*                            Gerhard Muenz                               */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -33,176 +34,222 @@
 
 /* FIXME: remove all the dirty hacks!!!!! */
 
-XMLConfObj::XMLConfObj(const std::string& filename, XmlType sourceType)
-	: documentTree(NULL), savedPosition(NULL), enterCurrentSaved(false)
+    XMLConfObj::XMLConfObj(const std::string& filename, XmlType sourceType)
 {
-	if (sourceType == XML_FILE) {
-		documentTree = xmlReadFile(filename.c_str(), NULL, 0);
-		if (NULL == documentTree) {
-			throw exceptions::XMLException("Could not parse " + filename);
-		}
-
-		currentLevel = xmlDocGetRootElement(documentTree);
-		// look for CONFIGURATION element and set currentLevel to CONFIGURATION
-		while (NULL != currentLevel && !xmlStrEqual(currentLevel->name,
-							    (const xmlChar*) config_space::CONFIGURATION.c_str())) {
-			currentLevel = currentLevel->next;
-		}
-
-		if (NULL == currentLevel) {
-			throw exceptions::XMLException("Could not find <" + config_space::CONFIGURATION +
-						       "> element in file " + filename);
-		}
-	} else if (sourceType == XML_STRING) {
-		documentTree  = xmlReadMemory(filename.c_str(), filename.size(), "noname.xml", NULL, 0);
-		if (NULL == documentTree) {
-			throw exceptions::XMLException("Could not parse " + filename);
-		} else {
-			currentLevel = xmlDocGetRootElement(documentTree);
-		}
-	} else {
-		throw exceptions::XMLException("Unknown source type " + sourceType);
+    if (sourceType == XML_FILE) {
+	documentTree = xmlReadFile(filename.c_str(), NULL, 0);
+	if (NULL == documentTree) {
+	    throw exceptions::XMLException("Could not parse " + filename);
 	}
+
+	currentLevel = xmlDocGetRootElement(documentTree);
+	// look for CONFIGURATION element and set currentLevel to CONFIGURATION
+	while ((NULL != currentLevel) && (currentLevel->type != XML_ELEMENT_NODE) && (!xmlStrEqual(currentLevel->name,
+		    (const xmlChar*) config_space::CONFIGURATION.c_str()))) {
+	    currentLevel = currentLevel->next;
+	}
+
+	if (NULL == currentLevel)
+	    throw exceptions::XMLException("Could not find <" + config_space::CONFIGURATION +
+		    "> element in file " + filename);
+	if (currentLevel->children == NULL)
+	    throw exceptions::XMLException("Element <" + config_space::CONFIGURATION +
+		    "> is empty in file " + filename);
+	currentLevel = currentLevel->children;
+    } else if (sourceType == XML_STRING) {
+	documentTree  = xmlReadMemory(filename.c_str(), filename.size(), "noname.xml", NULL, 0);
+	if (NULL == documentTree) {
+	    throw exceptions::XMLException("Could not parse " + filename);
+	} else {
+	    currentLevel = xmlDocGetRootElement(documentTree);
+	}
+    } else {
+	throw exceptions::XMLException("Unknown source type " + sourceType);
+    }
+
+    savedPosition = currentLevel;
 }
 
 XMLConfObj::~XMLConfObj()
 {
-	if (documentTree) {
-		xmlFreeDoc(documentTree);
-	}
-        xmlCleanupParser();
-}
-
-
-void XMLConfObj::setNode(const std::string& nodeName)
-{
-	if (NULL != findNode(nodeName)) {
-		savedPosition = findNode(nodeName);
-		enterCurrentSaved = true;
-	} else {
-		throw exceptions::XMLException("No such node in current level: " + nodeName);
-	}
-}
-
-void XMLConfObj::enterNode(const std::string& nodeName)
-{
-	if (NULL != findNode(nodeName)) {
-		currentLevel = findNode(nodeName);
-		savedPosition = NULL;
-	} else {
-		throw exceptions::XMLException("No such node in current level: " + nodeName);
-	}
-}
-
-void XMLConfObj::enterNextNode()
-{
-	if (!nextNodeExists()) {
-		throw exceptions::XMLException("No next node");
-	}
-	if (enterCurrentSaved) {
-		currentLevel = savedPosition;
-		enterCurrentSaved = false;
-	} else {
-		xmlNodePtr next = savedPosition->next;
-		while (next && xmlStrEqual(next->name, (const xmlChar*)"text")) {
-			next = next->next;
-		}
-		currentLevel = next;
-	}
-
-	savedPosition = NULL;
-}
-
-void XMLConfObj::leaveNode()
-{
-	if (NULL != currentLevel->parent) {
-		savedPosition = currentLevel;
-		currentLevel = currentLevel->parent;
-		enterCurrentSaved = false;
-	} else {
-		throw exceptions::XMLException("Already at root level");
-	}
-
+    if (documentTree) {
+	xmlFreeDoc(documentTree);
+    }
+    xmlCleanupParser();
 }
 
 bool XMLConfObj::nodeExists(const std::string& nodeName)
 {
-	if (NULL != findNode(nodeName)) {
-		return true;
-	}
+    return (findNode(nodeName, true) != NULL);
+}
 
+bool XMLConfObj::selectNodeIfExists(const std::string& nodeName)
+{
+    xmlNodePtr node = findNode(nodeName, true);
+    if (node) {
+	savedPosition = node;
+	return true;
+    } else {
 	return false;
+    }
+}
+
+bool XMLConfObj::selectNextNodeIfExists()
+{
+    xmlNodePtr node = findNode(false);
+    if (node) {
+	savedPosition = node;
+	return true;
+    } else {
+	return false;
+    }
+}
+
+bool XMLConfObj::selectNextNodeIfExists(const std::string& nodeName)
+{
+    xmlNodePtr node = findNode(nodeName, false);
+    if (node) {
+	savedPosition = node;
+	return true;
+    } else {
+	return false;
+    }
+}
+
+bool XMLConfObj::nodeIsEmpty()
+{
+    xmlNodePtr node = savedPosition->children;
+    while (node && (node->type != XML_ELEMENT_NODE))
+	node = node->next;
+    return (node == NULL);
+}
+
+void XMLConfObj::enterNode(const std::string& nodeName)
+{
+    xmlNodePtr node = findNode(nodeName, true);
+    if (node) {
+	node = node->children;
+	while (node && (node->type != XML_ELEMENT_NODE))
+	    node = node->next;
+	if(node) {
+	    savedPosition = currentLevel = node;
+	} else {
+	    throw exceptions::XMLException("Cannot enter empty node: " + nodeName);
+	}
+    } else {
+	throw exceptions::XMLException("Node does not exist: " + nodeName);
+    }
+}
+
+bool XMLConfObj::enterNodeIfNotEmpty()
+{
+    xmlNodePtr node = savedPosition->children;
+    while (node && (node->type != XML_ELEMENT_NODE))
+	node = node->next;
+    if(node) {
+	savedPosition = currentLevel = node;
+	return true;
+    } else {
+	return false;
+    }
+}
+
+void XMLConfObj::leaveNode()
+{
+    xmlNodePtr node;
+    if (NULL != (node = currentLevel->parent)) {
+	savedPosition = node;
+	while (node) {
+	    if (node->type == XML_ELEMENT_NODE)
+		currentLevel = node;
+	    node = node->prev;
+	}
+    } else {
+	throw exceptions::XMLException("Already at root level");
+    }
+
+}
+
+std::string XMLConfObj::getNodeName()
+{
+    return std::string((const char*)(savedPosition->name));
+}
+
+std::string XMLConfObj::getValue()
+{
+    return std::string((const char*)xmlNodeGetContent(savedPosition));
 }
 
 std::string XMLConfObj::getValue(const std::string& nodeName)
 {
-	xmlNodePtr node = findNode(nodeName);
-	if (NULL == node) {
-		throw exceptions::XMLException("No such node in current level: " + nodeName);
-	}
-	savedPosition = node;
-	return std::string((const char*)xmlNodeGetContent(node));
+    xmlNodePtr node = findNode(nodeName, true);
+    if (NULL == node) {
+	throw exceptions::XMLException("No such node in current level: " + nodeName);
+    }
+    return std::string((const char*)xmlNodeGetContent(node));
+}
+
+bool XMLConfObj::attributeExists(const std::string& attrName)
+{
+    const char* ret = (const char*)xmlGetProp(savedPosition, (const xmlChar*)attrName.c_str());
+    return (NULL != ret);
+}
+
+std::string XMLConfObj::getAttribute(const std::string& attrName)
+{
+    const char* ret = (const char*)xmlGetProp(savedPosition, (const xmlChar*)attrName.c_str());
+    if (NULL == ret) {
+	throw exceptions::XMLException("No attribute \"" + attrName + "\" in current node");
+    }
+    return ret;
 }
 
 std::string XMLConfObj::getAttribute(const std::string& nodeName, const std::string& attrName)
 {
-	xmlNodePtr node = findNode(nodeName);
-	if (NULL == node) {
-		throw exceptions::XMLException("No such node in current level: " + nodeName);
-	}
-	const char* ret = (const char*)xmlGetProp(node, (const xmlChar*)attrName.c_str());
-	if (NULL == ret) {
-		throw exceptions::XMLException("No attribute \"" + attrName + "\" in node \"" + nodeName + "\"");
-	}
-	return ret;
+    xmlNodePtr node = findNode(nodeName, true);
+    if (NULL == node) {
+	throw exceptions::XMLException("No such node in current level: " + nodeName);
+    }
+    const char* ret = (const char*)xmlGetProp(node, (const xmlChar*)attrName.c_str());
+    if (NULL == ret) {
+	throw exceptions::XMLException("No attribute \"" + attrName + "\" in node \"" + nodeName + "\"");
+    }
+    return ret;
 }
 
-xmlNodePtr XMLConfObj::findNode(const std::string& nodeName)
+xmlNodePtr XMLConfObj::findNode(bool first)
 {
-	xmlNodePtr node = currentLevel->xmlChildrenNode;
-	while (node != NULL) {
-		if (xmlStrEqual(node->name, (const xmlChar*) nodeName.c_str())) {
-			return node;   
-		}
-		node = node->next;
-	}
-	return node;
+    xmlNodePtr node;
+    if(first)
+	node = currentLevel;
+    else
+	node = savedPosition->next;
+    while (node && (node->type != XML_ELEMENT_NODE)) {
+	node = node->next;
+    }
+    return node;
 }
 
-bool XMLConfObj::nextNodeExists()
+xmlNodePtr XMLConfObj::findNode(const std::string& nodeName, bool first)
 {
-	xmlNodePtr tmp;
-	if (enterCurrentSaved)
-		tmp = savedPosition;
-	else
-		tmp = savedPosition->next;
-	while (tmp && xmlStrEqual(tmp->name, (const xmlChar*)"text")) {
-		tmp = tmp->next;
-	}
-	if (tmp)
-		return true;
-
-	return false;
-}
-
-std::string XMLConfObj::getNextValue()
-{
-	if (!nextNodeExists())
-		throw exceptions::XMLException("No next node exists");
-	savedPosition = savedPosition->next;
-	while (savedPosition && xmlStrEqual(savedPosition->name, (const xmlChar*)"text")) {
-		savedPosition = savedPosition->next;
-	}
-	return std::string((const char*)xmlNodeGetContent(savedPosition));
+    xmlNodePtr node;
+    if(first)
+	node = currentLevel;
+    else
+	node = savedPosition->next;
+    while (node && ((node->type != XML_ELEMENT_NODE) || (!xmlStrEqual(node->name, (const xmlChar*) nodeName.c_str())))) {
+	node = node->next;
+    }
+    return node;
 }
 
 std::string XMLConfObj::toString()
 {
-	xmlIndentTreeOutput = 1;
-        xmlKeepBlanksDefault(0);
-        xmlBufferPtr xmlBufPtr = xmlBufferCreate();
-        xmlNodeDump(xmlBufPtr, documentTree, currentLevel, 0, 1);
-        std::string ret = std::string((char *)xmlBufPtr->content, xmlBufPtr->use);
-        xmlBufferFree(xmlBufPtr);
-	return ret;
+    xmlIndentTreeOutput = 1;
+    xmlKeepBlanksDefault(0);
+    xmlBufferPtr xmlBufPtr = xmlBufferCreate();
+    xmlNodeDump(xmlBufPtr, documentTree, currentLevel, 0, 1);
+    std::string ret = std::string((char *)xmlBufPtr->content, xmlBufPtr->use);
+    xmlBufferFree(xmlBufPtr);
+    return ret;
 }

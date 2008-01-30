@@ -335,8 +335,8 @@ void pcapwriter::writepacket (PcapPacket* packet)
 		    tcp->checksum = htons((u & 0xffff) + (u>>16));
 		    if (tcp->checksum == 0) // differenciate between 'none' and 0
 			tcp->checksum = htons(1);
-		} */
-	    }
+		}
+	    } */
 
 	    int size = packet->ippps_size;
 

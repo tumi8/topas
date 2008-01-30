@@ -1,5 +1,6 @@
 /**************************************************************************/
 /*    Copyright (C) 2005-2007 Lothar Braun <mail@lobraun.de>              */
+/*                            Gerhard Muenz                               */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -52,29 +53,6 @@ public:
 	 */
 	~XMLConfObj();
 
-	void setNode(const std::string& nodeName);
-
-	/**
-	 * Enters node within the XML-Document. All following calls to methods
-	 * within this class will be relative to this node. Use @c leaveNode()
-	 * to get back to the former level.
-	 * Throws  exceptions::XMLException, if node does not exist.
-	 * @param nodeName
-	 */
-	void enterNode(const std::string& nodeName);
-
-	/**
-	 * Enters next node in the current level with node name passed to
-	 * @c enterNode(), @c getValue() or @c setNode().
-	 */
-	void enterNextNode();
-
-	/**
-	 * Leaves the current level within the XML-Tree.
-	 * Throws exceptions::XMLException, if we are already on document root.
-	 */
-	void leaveNode();
-
 	/**
 	 * Checks if given node exists on the current level.
 	 * @param nodeName name of node to look for.
@@ -83,32 +61,100 @@ public:
 	bool nodeExists(const std::string& name);
 
 	/**
+	 * Selects the first occurence of node with given name on the current level.
+	 * Returns false if node does not exist.
+	 * @param nodeName
+	 * @return True if node exists
+	 */
+	bool selectNodeIfExists(const std::string& nodeName);
+
+	/**
+	 * Selects the next node on the current level.
+	 * Returns false if node does not exist.
+	 * @param nodeName
+	 * @return True if node exists
+	 */
+	bool selectNextNodeIfExists();
+
+	/**
+	 * Selects the next occurence of node with given name on the current level.
+	 * Returns false if node does not exist.
+	 * @param nodeName
+	 * @return True if node exists
+	 */
+	bool selectNextNodeIfExists(const std::string& nodeName);
+
+	/**
+	 * Checks if the current node is empty.
+	 * @return True if node is empty.
+	 */
+	bool nodeIsEmpty();
+
+	/**
+	 * Enters the first occurence of a node with given name. All following 
+	 * calls to methods within this class will be relative to this node. 
+	 * Use @c leaveNode() to get back to the former level.
+	 * Throws an exeption if node does not exist or if it is empty.
+	 * @param nodeName
+	 */
+	void enterNode(const std::string& nodeName);
+
+	/**
+	 * Enters the current node. All following calls to methods
+	 * within this class will be relative to this node. Use @c leaveNode()
+	 * to get back to the former level.
+	 * Returns false if node is empty.
+	 * @param nodeName
+	 * @return True if node is not empty.
+	 */
+	bool enterNodeIfNotEmpty();
+
+	/**
+	 * Leaves the current level within the XML-Tree.
+	 * Throws exceptions::XMLException, if we are already on document root.
+	 */
+	void leaveNode();
+
+	/**
+	 * Gets the name of the current node.
+	 * Note: The result is "text" if the node is a text node (not element).
+	 * @return Node name or empty string.
+	 */
+	std::string getNodeName();
+
+	/**
+	 * Gets value of the current node.
+	 * @return Extracted value from given node.
+	 */
+	std::string getValue();
+
+	/**
 	 * Gets value from given node. Throws exceptions::XMLException if node
 	 * does not exist on current level.
+	 * Note: This function does not change the selected node (savedPosition).
 	 * @param nodeName name of node to extract value from.
 	 * @return Extracted value from given node.
 	 */
 	std::string getValue(const std::string& nodeName);
 
 	/**
-	 *  Tries to find the next node in the current level with the name passed to the last
-	 *  call to @c getValue() or @c setNode(). 
-	 *  @return true if such an node exists, false otherwise
+	 * Checks if the current node has the given attribute.
+	 * @return True if attribute exists.
 	 */
-	bool nextNodeExists();
+	bool attributeExists(const std::string& attrName);
 
 	/**
-	 * Tries to find more nodes with the name passed to the last call to @c getValue().
-	 * Throws @c XMLException when no next node exists (either because @c getValue() was
-	 * not called before or becase we already iterated through all existing nodes with the same
-	 * name.
-	 * @return Extracted value from next node.
+	 * Gets given attribute from current Node. Throws exceptions::XMLException if
+	 * node does not exists on the current level or if node does not have the given attribute.
+	 * @param attrName Name of attribute to extract.
+	 * @return Value of given attribute.
 	 */
-	std::string getNextValue();
-	
+	std::string getAttribute(const std::string& attrName);
+
 	/**
 	 * Gets given attribute from given Node. Throws exceptions::XMLException if
 	 * node does not exists on the current level or if node does not have the given attribute.
+	 * Note: This function does not change the selected node (savedPosition).
 	 * @param nodeName Name of node to look for.
 	 * @param attrName Name of attribute to extract.
 	 * @return Value of given attribute.
@@ -125,15 +171,21 @@ private:
 	xmlDocPtr documentTree;
 	xmlNodePtr currentLevel;
 	xmlNodePtr savedPosition;
-	/* FIXME: remove this diry hack */
-	bool enterCurrentSaved;
 
 	/**
 	 * Searches node on current level
 	 * @param nodeName
+	 * @param first	true to search from currentLevel->next, false to search from savedPosition->next
 	 * @return Pointer to node or NULL if node does not exists.
 	 */
-	xmlNodePtr findNode(const std::string& nodeName);
+	xmlNodePtr findNode(const std::string& nodeName, bool first);
+
+	/**
+	 * Searches (next) node on current level
+	 * @param first	true to search from currentLevel->next, false to search from savedPosition->next
+	 * @return Pointer to node or NULL if node does not exists.
+	 */
+	xmlNodePtr findNode(bool first);
 };
 
 

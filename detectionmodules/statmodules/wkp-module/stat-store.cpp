@@ -1,5 +1,7 @@
 /**************************************************************************/
-/*    Copyright (C) 2006 Romain Michalec                                  */
+/*    Copyright (C) 2006-07                                               */
+/*    Romain Michalec, Sven Wiebusch                                      */
+/*    University of Tuebingen, Germany                                    */
 /*                                                                        */
 /*    This library is free software; you can redistribute it and/or       */
 /*    modify it under the terms of the GNU Lesser General Public          */
@@ -19,397 +21,381 @@
 /**************************************************************************/
 
 #include "stat-store.h"
+#include <fstream>
 
 
 // ==================== STORAGE CLASS StatStore ====================
 
 
 StatStore::StatStore()
-  : SourceIP (0,0,0,0), DestIP (0,0,0,0) {
+    : e_source(IpAddress(0,0,0,0),0,0), e_dest(IpAddress(0,0,0,0),0,0) {
 
-  gotSourceIP = gotDestIP = false;
-  gotProtocol = false;
-  gotSourcePort = gotDestPort = false;
+	packet_nb = byte_nb = 0;
 
-  packet_nb = byte_nb = 0;
-
-  IpListMaxSizeReachedAndNewIpWantedToEnterIt = 0;
-
-}
+    }
 
 StatStore::~StatStore() {
 
-  PreviousData = Data;
+    PreviousData = Data;
 
 }
 
 bool StatStore::recordStart(SourceID sourceId) {
 
-  if (BeginMonitoring != true)
-    return false;
+    if (beginMonitoring != true)
+	return false;
 
-  if (find(accept_source_ids->begin(),accept_source_ids->end(),(int)sourceId)==accept_source_ids->end()){
-    return false;
-  }
+    packet_nb = byte_nb = 0;
+    e_source = e_dest = EndPoint(IpAddress(0,0,0,0),0,0);
 
-  gotSourceIP = gotDestIP = false;
-  gotProtocol = false;
-  gotSourcePort = gotDestPort = false;
-
-  packet_nb = byte_nb = 0;
-
-  SourceIP = DestIP = IpAddress(0,0,0,0);
-
-  return true;
+    return true;
 
 }
 
-std::vector<int>* StatStore::accept_source_ids = NULL;
 void StatStore::addFieldData(int id, byte * fieldData, int fieldDataLength, EnterpriseNo eid) {
+    // we subscribed to: see Stat::init_*()-functions
+    // addFieldData will be executed until there are no more fieldData
+    // in the current IPFIX record; so we are sure to get everything
+    // we subscribed to (so don't get worried because of
+    // the "breaks" in the "switch" loop hereafter)
 
-  // we subscribed to (see Stat::init()):
-  // - IPFIX_TYPEID_sourceIPv4Address and IPFIX_TYPEID_destinationIPv4Address
-  // - IPFIX_TYPEID_protocolIdentifier
-  // - IPFIX_TYPEID_packetDeltaCount and/or IPFIX_TYPEID_octetDeltaCount
-  // - possibly, IPFIX_TYPEID_sourceTransportPort and
-  //   IPFIX_TYPEID_destinationTransportPort
+    IpAddress SourceIP = IpAddress(0,0,0,0);
+    IpAddress DestIP = IpAddress(0,0,0,0);
 
-  // addFieldData will be executed until there are no more fieldData
-  // in the current IPFIX record; so we are sure to get everything
-  // we subscribed to (so don't get worried because of
-  // the "breaks" in the "switch" loop hereafter)
+    switch (id) {
+
+	case IPFIX_TYPEID_protocolIdentifier:
+
+	    if (fieldDataLength != IPFIX_LENGTH_protocolIdentifier) {
+		msgStr << MsgStream::ERROR << "Got IPFIX field (id=" << id << ") with unsupported length " << fieldDataLength << ". Skipping record." << MsgStream::endl;
+		return;
+	    }
+
+	    e_source.setProtocolID(*fieldData);
+	    e_dest.setProtocolID(*fieldData);
+
+	    break;
 
 
-  switch (id) {
+	case IPFIX_TYPEID_sourceIPv4Address:
+
+	    if (fieldDataLength != IPFIX_LENGTH_sourceIPv4Address) {
+		msgStr << MsgStream::ERROR << "Got IPFIX field (id=" << id << ") with unsupported length " << fieldDataLength << ". Skipping record." << MsgStream::endl;
+		return;
+	    }
+
+	    SourceIP.setAddress(fieldData[0],fieldData[1],fieldData[2],fieldData[3]);
+	    SourceIP.remanent_mask(netmask);
+	    e_source.setIpAddress(SourceIP);
+
+	    break;
 
 
-  case IPFIX_TYPEID_protocolIdentifier:
+	case IPFIX_TYPEID_destinationIPv4Address:
 
-    if (fieldDataLength != IPFIX_LENGTH_protocolIdentifier) {
-      std::cerr << "Error! Got invalid IPFIX field data (protocol)! "
-		<< "Skipping record.\n";
-      return;
+	    if (fieldDataLength != IPFIX_LENGTH_destinationIPv4Address) {
+		msgStr << MsgStream::ERROR << "Got IPFIX field (id=" << id << ") with unsupported length " << fieldDataLength << ". Skipping record." << MsgStream::endl;
+		return;
+	    }
+
+	    DestIP.setAddress(fieldData[0],fieldData[1],fieldData[2],fieldData[3]);
+	    DestIP.remanent_mask(netmask);
+	    e_dest.setIpAddress(DestIP);
+
+	    break;
+
+	    // Ports do only matter, if endpoint_key contains "port"
+	    // AND (endpoint_key contains "protocol" AND TCP and/or UDP are selected
+	    // OR protocols dont matter)
+	case IPFIX_TYPEID_sourceTransportPort:
+
+	    if (fieldDataLength != IPFIX_LENGTH_sourceTransportPort
+		    && fieldDataLength != IPFIX_LENGTH_sourceTransportPort-1) {
+		msgStr << MsgStream::ERROR << "Got IPFIX field (id=" << id << ") with unsupported length " << fieldDataLength << ". Skipping record." << MsgStream::endl;
+		return;
+	    }
+
+	    e_source.setPortNr((int)fieldToInt(fieldData, fieldDataLength));
+	    break;
+
+
+	case IPFIX_TYPEID_destinationTransportPort:
+
+	    if (fieldDataLength != IPFIX_LENGTH_destinationTransportPort
+		    && fieldDataLength != IPFIX_LENGTH_destinationTransportPort-1) {
+		std::cerr << "Error! Got invalid IPFIX field data (destination port)! "
+		    << "Skipping record.\n";
+		return;
+	    }
+
+	    e_dest.setPortNr((int)fieldToInt(fieldData, fieldDataLength));
+	    break;
+
+
+	case IPFIX_TYPEID_packetDeltaCount:
+
+	    if (fieldDataLength != IPFIX_LENGTH_packetDeltaCount) {
+		std::cerr << "Error! Got invalid IPFIX field data (#packets)! "
+		    << "Skipping record.\n";
+		return;
+	    }
+	    packet_nb = ntohll(*(uint64_t*)fieldData);
+
+	    break;
+
+
+	case IPFIX_TYPEID_octetDeltaCount:
+
+	    if (fieldDataLength != IPFIX_LENGTH_octetDeltaCount) {
+		std::cerr << "Error! Got invalid IPFIX field data (#octets)! "
+		    << "Skipping record.\n";
+		return;
+	    }
+	    byte_nb = ntohll(*(uint64_t*)fieldData);
+
+	    break;
+
+
+	default:
+
+	    std::cerr
+		<<"Warning! Got unknown record in StatStore::addFieldData(...)!\n"
+		<<"A programmer has probably added some record type in Stat::init()\n"
+		<<"but has forgotten to ensure its support in StatStore::addFieldData().\n"
+		<<"I'll try to keep working, but I can't tell for sure I won't crash.\n";
     }
 
-    protocol = *fieldData; // useful in recordEnd()
-    
-    if ( find(MonitoredProtocols.begin(), MonitoredProtocols.end(), *fieldData)
-	 !=
-	 MonitoredProtocols.end() )
-      gotProtocol = true;
-    // *fielData is a protocol number, so is 1 byte (= uint8_t) long
-    // remember to cast it into an uint16_t (= unsigned int)
-    // if you want to print it!
-    break;
-
-
-  case IPFIX_TYPEID_sourceIPv4Address:
-
-    if (fieldDataLength != IPFIX_LENGTH_sourceIPv4Address) {
-      std::cerr << "Error! Got invalid IPFIX field data (source IP)! "
-		<< "Skipping record.\n";
-      return;
-    }
-
-    SourceIP = IpAddress(fieldData[0],fieldData[1],fieldData[2],fieldData[3]);
-
-    if (MonitorEveryIp == true) {
-      SourceIP.remanent_mask(subnetMask);
-      if(find(MonitoredIpAddresses.begin(),MonitoredIpAddresses.end(),SourceIP)
-	 !=
-	 MonitoredIpAddresses.end()) // i.e. we already saw this IP
-	gotSourceIP = true;
-      else if (MonitoredIpAddresses.size() < IpListMaxSize) {
-	// i.e. we never saw this IP,
-	// that's a new one, so we add it to our IP-list,
-	// provided there is still place
-	MonitoredIpAddresses.push_back(SourceIP);
-	gotSourceIP = true;
-      }
-      else
-	IpListMaxSizeReachedAndNewIpWantedToEnterIt = 1;
-        // there isn't still place,
-        // so we just set the "max-size" flag to 1
-        // (ToDo: replace this flag with an exception)
-    }
-
-    else {
-      SourceIP.remanent_mask(subnetMask);
-      if(find(MonitoredIpAddresses.begin(),MonitoredIpAddresses.end(),SourceIP)
-	 !=
-	 MonitoredIpAddresses.end())
-	// i.e. (masked) SourceIP is one of the IPs in the given IpList
-	gotSourceIP = true;
-    }
-
-    // In the remaining cases (max-size reached, (masked) SourceIP not among
-    // the IPs to monitor...), we just let gotSourceIP to its previous value:
-    // false.
-    // No record will be produced.
-
-    break;
-
-
-  case IPFIX_TYPEID_destinationIPv4Address:
-
-    if (fieldDataLength != IPFIX_LENGTH_destinationIPv4Address) {
-      std::cerr << "Error! Got invalid IPFIX field data (destination IP)! "
-		<< "Skipping record.\n";
-      return;
-    }
-
-    DestIP = IpAddress(fieldData[0], fieldData[1], fieldData[2], fieldData[3]);
-
-    if (MonitorEveryIp == true) {
-      DestIP.remanent_mask(subnetMask);
-      if ( find(MonitoredIpAddresses.begin(),MonitoredIpAddresses.end(),DestIP)
-	   !=
-	   MonitoredIpAddresses.end() ) // i.e. we already saw this IP
-	gotDestIP = true;
-      else if ( MonitoredIpAddresses.size() < IpListMaxSize ) {
-	// i.e. we never saw this IP,
-	// that's a new one, so we add it to our IpList,
-	// provided there is still place
-	MonitoredIpAddresses.push_back(DestIP);
-	gotDestIP = true;
-      }
-      else
-	IpListMaxSizeReachedAndNewIpWantedToEnterIt = 1;
-        // there isn't still place,
-        // so we just set the "max-size" flag to 1
-        // (ToDo: replace this flag with an exception)
-    }
-
-    else {
-      DestIP.remanent_mask(subnetMask);
-      if ( find(MonitoredIpAddresses.begin(),MonitoredIpAddresses.end(),DestIP)
-	   !=
-	   MonitoredIpAddresses.end() )
-	// i.e. (masked) DestIP is one of the IPs in the given IpList
-	gotDestIP = true;
-    }
-
-    // In the remaining cases (max-size reached, (masked) DestIP not among
-    // the IPs to monitor...), we just let gotDestIP to its previous value:
-    // false.
-    // No record will be produced.
-
-    break;
-
-
-  case IPFIX_TYPEID_sourceTransportPort:
-
-    // This case may happen ONLY if:
-    // - we subscribed to IPFIX_TYPEID_sourceTransportPort,
-    //   i.e. TCP and/or UDP protocols are monitored
-    // - AND a TCP or UDP packet was received from the collector
-    //
-    // This case CANNOT happen when:
-    // - only ICMP and/or RAW are monitored (as, in this case,
-    //   we do not subscribe to IPFIX_TYPEID_sourceTransportPort);
-    //   EVEN IF a TCP or UDP packet was received from the collector
-
-    if (fieldDataLength != IPFIX_LENGTH_sourceTransportPort
-	&& fieldDataLength != IPFIX_LENGTH_sourceTransportPort-1) {
-      std::cerr << "Error! Got invalid IPFIX field data (source port)! "
-		<< "Skipping record.\n";
-      return;
-    }
-
-    if (fieldDataLength == IPFIX_LENGTH_sourceTransportPort) {
-      if ( MonitorAllPorts = true
-	   ||
-	   MonitoredPorts.end() !=
-	   find (MonitoredPorts.begin(), MonitoredPorts.end(),
-		 ntohs(*(uint16_t*)fieldData)) )
-	gotSourcePort = true;
-      // fieldData must be casted into an uint16_t (= unsigned int)
-      // as it is a port number
-      // (and, also, converted from network order to host order)
-    }
-
-    if (fieldDataLength == IPFIX_LENGTH_sourceTransportPort-1) {
-      if ( MonitorAllPorts = true
-	   || MonitoredPorts.end() !=
-	   find (MonitoredPorts.begin(), MonitoredPorts.end(),
-		 (uint16_t)*fieldData) )
-	gotSourcePort = true;
-      // fieldData must be casted into an uint16_t (= unsigned int)
-      // as it is a port number
-    }
-
-    break;
-
-
-  case IPFIX_TYPEID_destinationTransportPort:
-
-    // This case may happen ONLY if:
-    // - we subscribed to IPFIX_TYPEID_destinationTransportPort,
-    //   i.e. TCP and/or UDP protocols are monitored
-    // - AND a TCP or UDP packet was received from the collector
-    //
-    // This case CANNOT happen when:
-    // - only ICMP and/or RAW are monitored (as, in this case,
-    //   we do not subscribe to IPFIX_TYPEID_destinationTransportPort);
-    //   EVEN IF a TCP or UDP packet was received from the collector
-
-    if (fieldDataLength != IPFIX_LENGTH_destinationTransportPort
-	&& fieldDataLength != IPFIX_LENGTH_destinationTransportPort-1) {
-      std::cerr << "Error! Got invalid IPFIX field data (destination port)! "
-		<< "Skipping record.\n";
-      return;
-    }
-
-    if (fieldDataLength == IPFIX_LENGTH_destinationTransportPort) {
-      if ( MonitorAllPorts = true
-	   ||
-	   MonitoredPorts.end() !=
-	   find (MonitoredPorts.begin(), MonitoredPorts.end(),
-		 ntohs(*(uint16_t*)fieldData)) )
-	gotDestPort = true;
-      // fieldData must be casted into an uint16_t (= unsigned int)
-      // as it is a port number
-      // (and, also, converted from network order to host order)
-    }
-
-    if (fieldDataLength == IPFIX_LENGTH_destinationTransportPort-1) {
-      if ( MonitorAllPorts = true
-	   ||
-	   MonitoredPorts.end() !=
-	   find (MonitoredPorts.begin(), MonitoredPorts.end(),
-		 (uint16_t)*fieldData) )
-	gotDestPort = true;
-      // fieldData must be casted into an uint16_t (= unsigned int)
-      // as it is a port number
-    }
-
-    break;
-
-
-  case IPFIX_TYPEID_packetDeltaCount:
-
-    if (fieldDataLength != IPFIX_LENGTH_packetDeltaCount) {
-      std::cerr << "Error! Got invalid IPFIX field data (#packets)! "
-		<< "Skipping record.\n";
-      return;
-    }
-    packet_nb = ntohll(*(uint64_t*)fieldData);
-    break;
-
-
-  case IPFIX_TYPEID_octetDeltaCount:
-
-    if (fieldDataLength != IPFIX_LENGTH_octetDeltaCount) {
-      std::cerr << "Error! Got invalid IPFIX field data (#octets)! "
-		<< "Skipping record.\n";
-      return;
-    }
-    byte_nb = ntohll(*(uint64_t*)fieldData);
-    break;
-
-
-  default:
-
-    std::cerr
-    <<"Warning! Got unknown record in StatStore::addFieldData(...)!\n"
-    <<"A programmer has probably added some record type in Stat::init()\n"
-    <<"but has forgotten to ensure its support in StatStore::addFieldData().\n"
-    <<"I'll try to keep working, but I can't tell for sure I won't crash.\n";
-
-  }
-
-  return;
-
+    return;
 }
 
 
+// For every call to recordEnd, two endpoints will be considered:
+// One consisting of SourceIP, SourcePort and Protocol (e_source)
+// And one consisting of DestIP, DestPort and Protocol (e_dest)
 void StatStore::recordEnd() {
 
-  // Let it be clear that "gotThing" should in fact be read
-  // "gotThingThatWeWishedToMonitor"...
-  //
-  // As explained in StatStore::addFieldData, at the end of an IPFIX record,
-  // we are sure to have got every field we subscribed to; however, we are
-  // not sure to have got field values we wanted to monitor. For instance,
-  // let say we subscribed to the whole IP 5-tuple, namely SourceIP-DestIP
-  // Protocol-SourcePort-DestPort, but we want to monitor only TCP protocol
-  // on port 80. Suppose a UDP paquet is received; as we subscribed
-  // to IPFIX_TYPEID_protocolIdentifier, the corresponding IPFIX record is
-  // received from the collector. But as we don't want to monitor UDP,
-  // StatStore::addFieldData sets gotProtocol to "false": that's why we
-  // should in fact read gotProtocolThatWeWishedToMonitor...
-  // And no information is added to our Data map by the two "if" tests.
-  //
-  // On the other hand, if we receive a TCP paquet on port 80,
-  // then StatStore::addFieldData sets gotProtocol (and the others) to "true",
-  // and we are sure BOTH "if" tests are true and add information to our
-  // Data map.
+    std::stringstream Warning;
+    Warning
+	<< "WARNING: New EndPoint observed but EndPointListMaxSize reached!\n"
+	<< "Couldn't monitor new EndPoint: ";
 
-  if ( gotProtocol == true
-       &&
-       gotSourceIP == true
-       &&
-       ( protocol == IPFIX_protocolIdentifier_ICMP
-	 || protocol == IPFIX_protocolIdentifier_RAW
-	 || protocol == IPFIX_protocolIdentifier_TCP && gotSourcePort == true
-	 || protocol == IPFIX_protocolIdentifier_UDP && gotSourcePort == true )
-       // port monitoring only for TCP and UDP
-       ) {
+    // Handle EndPoint e_source (with SourceIP and SourcePort)
 
-    Data[SourceIP].packets_out += packet_nb;
-    Data[SourceIP].bytes_out   += byte_nb;
-    // the mere writting of "Data[SourceIP]" creates the entry <SourceIP,Info>
-    // in the map Data, with the Info structure filled with default values
-    // (0 for integers); hence we are sure that all 4 fields of the Info
-    // structure Data[SourceIP] are initialized with suitable values:
-    // at least 0, and more if traffic is noticed
+    // FILTER: Consider only EndPoints we are interested in
+    if (monitorEndPoint(e_source) == true || monitorEveryEndPoint == true) {
 
-  }
+	// EndPoint already known and thus in our List?
+	if ( find(endPointList.begin(), endPointList.end(), e_source) != endPointList.end() ) {
+	    // Since Data is destroyed after every test()-run,
+	    // we need to check, if the endpoint was already seen in the
+	    // current run
+	    std::map<EndPoint,Info>::iterator it = Data.find(e_source);
+	    if( it != Data.end() ) {
+		it->second.packets_out += packet_nb;
+		it->second.bytes_out += byte_nb;
+		it->second.records_out++;
+	    }
+	    else {
+		Data[e_source].packets_out += packet_nb;
+		it = Data.find(e_source);
+		it->second.bytes_out += byte_nb;
+		it->second.records_out++;
+	    }
+	}
+	// EndPoint not known, still place to add it?
+	else {
+	    if (endPointList.size() < endPointListMaxSize) {
+		Info newinfo;
+		newinfo.bytes_in = newinfo.packets_in = newinfo.records_in = 0;
+		newinfo.packets_out = packet_nb;
+		newinfo.bytes_out = byte_nb;
+		newinfo.records_out = 1;
+		Data.insert(std::make_pair<EndPoint,Info>(e_source, newinfo));
+		endPointList.push_back(e_source);
+	    }
+	    else
+		std::cerr << Warning.str() << e_source << std::endl;
+	}
+    }
 
-  if ( gotProtocol == true
-       &&
-       gotDestIP == true
-       &&
-       ( protocol == IPFIX_protocolIdentifier_ICMP
-	 || protocol == IPFIX_protocolIdentifier_RAW
-	 || protocol == IPFIX_protocolIdentifier_TCP && gotDestPort == true
-	 || protocol == IPFIX_protocolIdentifier_UDP && gotDestPort == true )
-       // port monitoring only for TCP and UDP
-       ) {
 
-    Data[DestIP].packets_in += packet_nb;
-    Data[DestIP].bytes_in   += byte_nb;
-    // the mere writting of "Data[DestIP]" creates the entry <DestIP,Info>
-    // in the map Data, with the Info structure filled with default values
-    // (0 for integers); hence we are sure that all 4 fields of the Info
-    // structure Data[DestIP] are initialized with suitable values:
-    // at least 0, and more if traffic is noticed
+    // Handle EndPoint e_dest (with DestIP and DestPort)
 
-  }
+    // FILTER: Consider only EndPoints we are interested in
+    if (monitorEndPoint(e_dest) == true || monitorEveryEndPoint == true) {
 
-  return;
+	// EndPoint already known and thus in our List?
+	if ( find(endPointList.begin(), endPointList.end(), e_dest) != endPointList.end() ) {
+	    // Since Data is destroyed after every test()-run,
+	    // we need to check, if the endpoint was already seen in the
+	    // current run
+	    std::map<EndPoint,Info>::iterator it = Data.find(e_dest);
+	    if ( it != Data.end() ) {
+		it->second.packets_in += packet_nb;
+		it->second.bytes_in += byte_nb;
+		it->second.records_in++;
+	    }
+	    else {
+		Data[e_dest].packets_in += packet_nb;
+		it = Data.find(e_dest);
+		it->second.bytes_in += byte_nb;
+		it->second.records_in++;
+	    }
+	}
+	// EndPoint not known, still place to add it?
+	else {
+	    if (endPointList.size() < endPointListMaxSize) {
+		Info newinfo;
+		newinfo.bytes_out = newinfo.packets_out = newinfo.records_out = 0;
+		newinfo.packets_in = packet_nb;
+		newinfo.bytes_in = byte_nb;
+		newinfo.records_in = 1;
+		Data.insert(std::make_pair<EndPoint,Info>(e_dest, newinfo));
+		endPointList.push_back(e_dest);
+	    }
+	    else
+		std::cerr << Warning.str() << e_dest << std::endl;
+	}
+    }
 
+    return;
 }
 
+// input from file (for offline usage)
+std::ifstream& operator>>(std::ifstream& is, StatStore* store) {
+
+    std::stringstream Warning;
+    Warning
+	<< "WARNING: New EndPoint observed but endPointListMaxSize reached!\n"
+	<< "Couldn't monitor new EndPoint: ";
+
+    if ( is.eof() ) {
+	std::cerr << "INFORMATION: All Data read from file.\n";
+	is.close();
+	return is;
+    }
+
+    std::string tmp;
+    store->Data.clear();
+    while ( getline(is, tmp) ) {
+	if (0 == strncmp("---",tmp.c_str(),3) )
+	    break;
+	else if ( is.eof() ) {
+	    std::cerr << "INFORMATION: All Data read from file.\n";
+	    is.close();
+	    return is;
+	}
+
+	// extract endpoint-data
+	EndPoint ep;
+	ep.fromString(tmp);
+	// extract metric-data
+	std::string::size_type k = tmp.find('_', 0);
+	std::stringstream tmp1(tmp.substr(k+1));
+	Info info;
+	tmp1 >> info.packets_in >> info.packets_out >> info.bytes_in >> info.bytes_out >> info.records_in >> info.records_out;
+
+	// AGGREGATION: Use endpoint_key and netmask parameters to aggregate endpoints
+	if (store->ipMonitoring == false)
+	    ep.setIpAddress(IpAddress(0,0,0,0));
+	else // apply global netmask
+	    ep.applyNetmask(store->netmask);
+	if (store->portMonitoring == false)
+	    ep.setPortNr(0);
+	if (store->protocolMonitoring == false)
+	    ep.setProtocolID(0);
+
+	// FILTER: Consider only EndPoints we are interested in
+	if (store->monitorEndPoint(ep) == true || store->monitorEveryEndPoint == true) {
+	    // EndPoint already known and thus in our List?
+	    if ( find(store->endPointList.begin(), store->endPointList.end(), ep) != store->endPointList.end() ) {
+		// Since Data is destroyed after every test()-run,
+		// we need to check, if the endpoint was already seen in the
+		// current run
+		std::map<EndPoint,Info>::iterator it = store->Data.find(ep);
+		if ( it != store->Data.end() ) {
+		    it->second.packets_in += info.packets_in;
+		    it->second.bytes_in += info.bytes_in;
+		    it->second.records_in += info.records_in;
+		    it->second.packets_out += info.packets_out;
+		    it->second.bytes_out += info.bytes_out;
+		    it->second.records_out += info.records_out;
+		}
+		else {
+		    store->Data[ep].packets_in += info.packets_in;
+		    it = store->Data.find(ep);
+		    it->second.bytes_in += info.bytes_in;
+		    it->second.records_in += info.records_in;
+		    it->second.packets_out += info.packets_out;
+		    it->second.bytes_out += info.bytes_out;
+		    it->second.records_out += info.records_out;
+		}
+	    }
+	    // EndPoint not known, still place to add it?
+	    else {
+		if (store->endPointList.size() < store->endPointListMaxSize) {
+		    store->Data.insert(std::make_pair<EndPoint,Info>(ep, info));
+		    store->endPointList.push_back(ep);
+		}
+		else
+		    std::cerr << Warning.str() << ep << std::endl;
+	    }
+	}
+
+	tmp.clear();
+	tmp1.clear();
+    }
+
+    return is;
+}
+
+// returns true, if we are interested in EndPoint ep.
+// That means, that ep matches one of the FilterEndPoints defined
+// in endPointFilter (initialized either by x_frequently_endpoints
+// or endpoints_to_monitor file
+// (returns false otherwise)
+bool StatStore::monitorEndPoint (const EndPoint & ep) {
+
+    std::vector<FilterEndPoint>::iterator it = endPointFilter.begin();
+    while ( it != endPointFilter.end() ) {
+	if (it->matchesWithEndPoint(ep, netmask) == true)
+	    return true;
+	//    std::cout << *it << "\t | \t" << ep << std::endl;
+	it++;
+    }
+
+    return false;
+}
+
+
+std::string StatStore::EndPointFilters()
+{
+    std::stringstream tmp;
+    for(std::vector<FilterEndPoint>::iterator it = endPointFilter.begin();
+	    it != endPointFilter.end(); it++ ) {
+	tmp << *it << "\n"; 
+    }
+    return tmp.str();
+}
 
 // ========== INITIALISATIONS OF STATIC MEMBERS OF CLASS StatStore ===========
 
-std::map<IpAddress,Info> StatStore::PreviousData;
+std::map<EndPoint,Info> StatStore::PreviousData;
 
 // even if the following members will be given their actual values
 // by the Stat::init() function, we have to provide some initial values
 // in the implementation file of the related class;
 
-std::vector<IpAddress> StatStore::MonitoredIpAddresses;
+short StatStore::netmask = 32;
+// for OFFLINE MODE
+bool StatStore::ipMonitoring = false;
+bool StatStore::portMonitoring = false;
+bool StatStore::protocolMonitoring = false;
 
-byte StatStore::subnetMask[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+std::vector<FilterEndPoint> StatStore::endPointFilter;
+bool StatStore::monitorEveryEndPoint = false;
 
-bool StatStore::MonitorEveryIp = false;
-int StatStore::IpListMaxSize = 0;
+std::vector<EndPoint> StatStore::endPointList;
+int StatStore::endPointListMaxSize = 0;
 
-std::vector<byte> StatStore::MonitoredProtocols;
-
-std::vector<uint16_t> StatStore::MonitoredPorts;
-bool StatStore::MonitorAllPorts = false;
-
-bool StatStore::BeginMonitoring = false;
+bool StatStore::beginMonitoring = false;

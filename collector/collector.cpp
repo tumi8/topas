@@ -185,30 +185,30 @@ void Collector::readDetectionModules(XMLConfObj* config)
 	std::string tmp;	
 	/* get the names of the detection modules */
 	config->enterNode(config_space::DETECTIONMODULES);
-	if (config->nodeExists(config_space::DETECTIONMODULE)) {
-		config->setNode(config_space::DETECTIONMODULE);
-		while (config->nextNodeExists()) {
-			config->enterNextNode();
-			std::string filename = config->getValue(config_space::FILENAME);
-			std::string configFile = config->getValue(config_space::CONFIG_FILE);
-			std::string run = config->getValue(config_space::RUN);
-			std::vector<std::string> args;
-			if (config->nodeExists(config_space::ARG)) {
-				args.push_back(config->getValue(config_space::ARG));
-				while(config->nextNodeExists()) {
-					args.push_back(config->getNextValue());
+	if (config->selectNodeIfExists(config_space::DETECTIONMODULE)) {
+		do {
+			if(config->enterNodeIfNotEmpty()) {
+				std::string filename = config->getValue(config_space::FILENAME);
+				std::string configFile = config->getValue(config_space::CONFIG_FILE);
+				std::string run = config->getValue(config_space::RUN);
+				std::vector<std::string> args;
+				if (config->selectNodeIfExists(config_space::ARG)) {
+				    do {
+					args.push_back(config->getValue());
+				    } while(config->selectNextNodeIfExists(config_space::ARG));
 				}
+				if (run == "yes") {
+				    man->addDetectionModule(filename, configFile, args, Manager::start);
+				} else if (run == "no") {
+				    man->addDetectionModule(filename, configFile, args, Manager::dontStart);
+				} else {
+				    throw exceptions::ConfigError("Bad value for <" + config_space::RUN
+					    + ">. Expecting \"yes\" or \"no\"");
+				}
+				config->leaveNode();
 			}
-			if (run == "yes") {
-				man->addDetectionModule(filename, configFile, args, Manager::start);
-			} else if (run == "no") {
-				man->addDetectionModule(filename, configFile, args, Manager::dontStart);
-			} else {
-				throw exceptions::ConfigError("Bad value for <" + config_space::RUN
-							      + ">. Expecting \"yes\" or \"no\"");
-			}
-			config->leaveNode();
 		}
+		while (config->selectNextNodeIfExists(config_space::DETECTIONMODULE));
 	}
 	config->leaveNode();
 	msg(MSG_INFO, "Extracted all detection modules from config file.");
@@ -242,19 +242,15 @@ void Collector::readMisc(XMLConfObj* config)
 
 	/* restart crashed modules */
 	if (config->nodeExists(config_space::RESTART_ON_CRASH)) {
-		if (config->nodeExists(config_space::RESTART_ON_CRASH)) {
-			tmp = config->getValue(config_space::RESTART_ON_CRASH);
-			if (tmp == "yes") {
-				man->restartOnCrash = true;
-			} else if (tmp == "no") {
-				man->restartOnCrash = false;
-			} else {
-				throw exceptions::ConfigError("Bad value for configuration item \"" +
-							      config_space::RESTART_ON_CRASH +
-							      "\n Posibilities are yes or no");
-			}
+		tmp = config->getValue(config_space::RESTART_ON_CRASH);
+		if (tmp == "yes") {
+		    man->restartOnCrash = true;
+		} else if (tmp == "no") {
+		    man->restartOnCrash = false;
 		} else {
-				
+		    throw exceptions::ConfigError("Bad value for configuration item \"" +
+			    config_space::RESTART_ON_CRASH +
+			    "\n Posibilities are yes or no");
 		}
 	} else {
 		man->restartOnCrash = false;
@@ -341,44 +337,40 @@ void Collector::readIDMEF(XMLConfObj* config)
 	std::string tmp;
 	/* configure xmlBlaster connection properties */
 	config->enterNode(config_space::XMLBLASTERS);
-	if (!config->nodeExists(config_space::XMLBLASTER)) {
-		throw exceptions::ConfigError("No <" + config_space::XMLBLASTER
-					      + "> statement in config file");
-	}
-	config->setNode(config_space::XMLBLASTER);
-	unsigned int count = 0;
-	while (config->nextNodeExists()) {
-		config->enterNextNode();
-		/* Property does handle properties in the java-way */
-		Property::MapType propMap;
-		std::vector<std::string> props;
-		/* get all properties */
-		if (config->nodeExists(config_space::XMLBLASTER_PROP)) {
-			props.push_back(config->getValue(config_space::XMLBLASTER_PROP));
-			while (config->nextNodeExists()) {
-				props.push_back(config->getNextValue());
+	if (config->selectNodeIfExists(config_space::XMLBLASTER)) {
+		unsigned int count = 0;
+		do {
+			if(config->enterNodeIfNotEmpty()) {
+			    /* Property does handle properties in the java-way */
+			    Property::MapType propMap;
+			    std::vector<std::string> props;
+			    /* get all properties */
+			    if (config->selectNodeIfExists(config_space::XMLBLASTER_PROP)) {
+				do {
+				    props.push_back(config->getValue());
+				} while (config->selectNextNodeIfExists(config_space::XMLBLASTER_PROP))
+			    } else {
+				msg(MSG_INFO, ("No <" + config_space::XMLBLASTER_PROP + 
+					    "> statement in config file, using default values").c_str());
+			    }
+			    for (unsigned i = 0; i != props.size(); ++i) {
+				unsigned seperatorPos;
+				if (std::string::npos != (seperatorPos = props[i].find(' '))) {
+				    std::string key = std::string(props[i].begin(), props[i].begin() + seperatorPos);
+				    std::string value  = std::string(props[i].begin() + seperatorPos + 1, props[i].end());
+				    propMap[key] = value;
+				}
+			    }
+			    /* global configuration for each xmlBlaster connection */
+			    std::string instanceName = "connection-" + ++count;
+			    GlobalRef globalRef =  Global::getInstance().createInstance(instanceName, &propMap);
+			    /* get topas id here */
+			    std::string str = globalRef.getElement()->getInstanceId();
+			    man->topasID = std::string(str.begin() + str.find_last_of("/") + 1, str.end());
+			    man->xmlBlasters.push_back(globalRef);
+			    config->leaveNode();
 			}
-		} else {
-			msg(MSG_INFO, ("No <" + config_space::XMLBLASTER_PROP + 
-				       "> statement in config file, using default values").c_str());
-		}
-		for (unsigned i = 0; i != props.size(); ++i) {
-			unsigned seperatorPos;
-			if (std::string::npos != (seperatorPos = props[i].find(' '))) {
-				std::string key = std::string(props[i].begin(), props[i].begin() + seperatorPos);
-				std::string value  = std::string(props[i].begin() + seperatorPos + 1, props[i].end());
-				propMap[key] = value;
-			}
-		}
-		/* global configuration for each xmlBlaster connection */
-		std::string instanceName = "connection-" + ++count;
-		GlobalRef globalRef =  Global::getInstance().createInstance(instanceName, &propMap);
-		/* get topas id here */
-		std::string str = globalRef.getElement()->getInstanceId();
-		man->topasID = std::string(str.begin() + str.find_last_of("/") + 1, str.end());
-		man->xmlBlasters.push_back(globalRef);
-		config->leaveNode();
-	}
+		} while (config->selectNextNodeIfExists(config_space::XMLBLASTER)) {
 	config->leaveNode();
 #endif
 }
