@@ -22,6 +22,7 @@
 
 #include <concentrator/rcvIpfix.h>
 //#include <concentrator/msg.h>
+#include <iostream>
 
 
 /**
@@ -149,7 +150,6 @@ int newDataRecordFixedFieldsArrived(void* handle, SourceID sourceID,
                                          DataTemplateInfo* ti, uint16_t length,
                                          FieldData* data) 
 {
-
         /* same as with new_data_record_arrived */
         PacketReader* input = static_cast<PacketReader*>(handle);
         input->recordMutex.lock();

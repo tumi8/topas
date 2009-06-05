@@ -21,6 +21,7 @@
 #include "ks-test.h"
 #include "shared.h"
 #include <cmath>
+#include <cstdlib>
 
 
 /* KOLMOGOROV-SMIRNOV TEST OF HOMOGENEITY

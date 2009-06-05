@@ -96,7 +96,7 @@ void Snortmodule::init(){
 	msg(MSG_INFO, "Snortmodule: Setting up...");
 	/* create FIFO */
 	if ((mknod(FIFO, S_IFIFO | 0666, 0)) < 0){
-		msg(MSG_ERROR, "Snortmodule: mknod failed");
+		msg(MSG_ERROR, "Snortmodule: mknod failed on %s: %s", FIFO, strerror(errno));
 		throw exceptions::DetectionModuleError("Snortmodule", "Can't create FIFO", strerror(errno));
 	}
 

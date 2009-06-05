@@ -19,6 +19,7 @@
 #include <iostream>
 #include <gsl/gsl_rng.h>
 #include <stdint.h>
+#include <string.h>
 
 /* GenericKey class holding uint8_t* input for BloomFilter hash functions */
 template<unsigned size> class GenericKey

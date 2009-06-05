@@ -206,6 +206,8 @@ namespace shared
 		bool deleteBlock;
         };
 
+	std::ostream& operator<<(std::ostream& os, const FileCounter& fc);
+
 };
 
 #endif

@@ -22,7 +22,8 @@
 #include <commonutils/global.h>
 #include <concentrator/msg.h>
 
-
+#include <malloc.h>
+#include <string.h>
 #include <signal.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>

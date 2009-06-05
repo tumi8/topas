@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <datastore.h>
 #include <iostream>
+#include <string.h>
 
 // 4 bytes - ip address
 // 1 bytes - bits for subnet mask

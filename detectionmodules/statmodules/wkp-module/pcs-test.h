@@ -24,6 +24,8 @@
 #include <vector>
 #include <list>
 #include <gsl/gsl_cdf.h>
+#include <stdint.h>
+#include <ostream>
 
 void pcs_categories ( std::list<int64_t>, std::list<int64_t>,
 		      std::vector<unsigned> &, std::vector<unsigned> &,

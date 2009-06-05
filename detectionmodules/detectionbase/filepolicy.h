@@ -30,6 +30,8 @@
 #include <commonutils/packetstats.h>
 
 
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <semaphore.h>
 #include <errno.h>
@@ -318,7 +320,7 @@ template <
 >
 class UnbufferedFilesInputPolicy : public InputPolicyBase<Notifier, Storage>, public PacketReader<Notifier, Storage> {
 public:
-	UnbufferedFilesInputPolicy() : maxBuffers(256), bufferErrors(0) {
+	UnbufferedFilesInputPolicy() : maxBuffers(4096), bufferErrors(0) {
 		packetLock.lock();
 	}
 

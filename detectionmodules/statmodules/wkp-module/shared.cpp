@@ -23,6 +23,7 @@
 #include "shared.h"
 #include <ostream>
 #include <sstream>
+#include <cstdlib>
 
 // ============== SOME METHODS FOR CLASS EndPoint ================
 

@@ -22,6 +22,7 @@
 #include <ostream>
 #include <sstream>
 
+#include <stdlib.h>
 
 std::string IpAddress::toString() const
 {

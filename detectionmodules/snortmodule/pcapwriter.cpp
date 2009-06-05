@@ -25,6 +25,7 @@
 #include "pcapwriter.h"
 #include <iostream>
 
+#include <string.h>
 
 
 /*----------------------------------------------------------------------

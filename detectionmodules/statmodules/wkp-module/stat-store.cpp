@@ -23,6 +23,8 @@
 #include "stat-store.h"
 #include <fstream>
 
+#include <string.h>
+
 
 // ==================== STORAGE CLASS StatStore ====================
 

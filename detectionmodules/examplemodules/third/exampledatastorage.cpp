@@ -18,6 +18,8 @@
 
 #include "exampledatastorage.h"
 
+#include <string.h>
+
 
 ExampleDataStorage::ExampleDataStorage() 
 	: sourceAddress(0,0,0,0), destinationAddress(0,0,0,0), sourcePort(0), destinationPort(0)
